@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <title>Внедорожник — колёса корректные</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- UMD r146: работает по file:// -->
+    <script src="https://unpkg.com/three@0.146.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.146.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #faf5dd;
+        font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif;
+      }
+      canvas {
+        display: block;
+      }
+      .hud {
+        position: fixed;
+        left: 12px;
+        top: 12px;
+        z-index: 5;
+        background: #ffffffd8;
+        padding: 10px 12px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        font-size: 13px;
+      }
+      .btn {
+        border: 0;
+        padding: 8px 10px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .btn-toggle {
+        background: #111;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="hud">
+      <b>SUV</b>
+      <button id="qualityBtn" class="btn btn-toggle">Quality: OFF</button>
+      <span>W/S — газ/тормоз · A/D — поворот · Space — ручник · H — оси</span>
+    </div>
+
+    <script>
+      // ===== Сцена/камера/рендер =====
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xfaf5dd);
+
+      const camera = new THREE.PerspectiveCamera(
+        55,
+        innerWidth / innerHeight,
+        0.1,
+        500
+      );
+      camera.position.set(8, 5, 9);
+
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        powerPreference: "high-performance",
+      });
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+      document.body.appendChild(renderer.domElement);
+
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.target.set(0, 1, 0);
+
+      // ===== Свет и земля =====
+      scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+      const sun = new THREE.DirectionalLight(0xffffff, 0.65);
+      sun.position.set(8, 10, 6);
+      scene.add(sun);
+
+      // Поворачиваем ГЕОМЕТРИЮ сразу (надёжно)
+      const groundGeo = new THREE.PlaneGeometry(200, 200);
+      groundGeo.rotateX(-Math.PI / 2); // <-- ключевой поворот
+      const ground = new THREE.Mesh(
+        groundGeo,
+        new THREE.MeshLambertMaterial({ color: 0xefe9cf })
+      );
+      scene.add(ground);
+
+      // ===== Материалы (Fast/High) =====
+      const Fast = {
+        paint1: new THREE.MeshLambertMaterial({ color: 0x1e87f0 }),
+        paint2: new THREE.MeshLambertMaterial({ color: 0xffb31a }),
+        trims: new THREE.MeshLambertMaterial({ color: 0xc7ceda }),
+        rubber: new THREE.MeshLambertMaterial({ color: 0x1b1b1b }),
+        glass: new THREE.MeshLambertMaterial({
+          color: 0x77c4ff,
+          transparent: true,
+          opacity: 0.55,
+        }),
+        head: new THREE.MeshBasicMaterial({ color: 0xfff3b0 }),
+        tail: new THREE.MeshBasicMaterial({ color: 0xff4444 }),
+        mark: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+      };
+      const High = {
+        paint1: new THREE.MeshStandardMaterial({
+          color: 0x1e87f0,
+          metalness: 0.2,
+          roughness: 0.45,
+        }),
+        paint2: new THREE.MeshStandardMaterial({
+          color: 0xffb31a,
+          metalness: 0.2,
+          roughness: 0.45,
+        }),
+        trims: new THREE.MeshStandardMaterial({
+          color: 0xc9d0dc,
+          metalness: 0.6,
+          roughness: 0.35,
+        }),
+        rubber: new THREE.MeshStandardMaterial({
+          color: 0x1b1b1b,
+          roughness: 0.95,
+        }),
+        glass: new THREE.MeshPhysicalMaterial({
+          color: 0x77c4ff,
+          transparent: true,
+          opacity: 0.5,
+          roughness: 0.08,
+          clearcoat: 1,
+          transmission: 0.02,
+        }),
+        head: new THREE.MeshStandardMaterial({
+          color: 0xfff3b0,
+          emissive: 0xfff3b0,
+          emissiveIntensity: 1,
+        }),
+        tail: new THREE.MeshStandardMaterial({
+          color: 0xff3b3b,
+          emissive: 0xff3b3b,
+          emissiveIntensity: 0.9,
+        }),
+        mark: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+      };
+      let MAT = Fast;
+
+      // ===== Кузов =====
+      const suv = new THREE.Group();
+      function box(w, h, d, m) {
+        return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+      }
+
+      const bodyLow = box(3.5, 0.8, 1.7, MAT.paint2);
+      bodyLow.position.y = 1.0;
+      suv.add(bodyLow);
+      const bodyUp = box(2.7, 0.65, 1.55, MAT.paint1);
+      bodyUp.position.set(0, 1.5, 0);
+      suv.add(bodyUp);
+      const glazing = box(2.4, 0.5, 1.4, MAT.glass);
+      glazing.position.set(0, 1.5, 0);
+      suv.add(glazing);
+      const frame = box(3.6, 0.22, 1.8, MAT.trims);
+      frame.position.y = 0.55;
+      suv.add(frame);
+      const headL = box(0.14, 0.12, 0.16, MAT.head);
+      headL.position.set(-2.05, 0.95, 0.5);
+      suv.add(headL);
+      const headR = headL.clone();
+      headR.material = MAT.head;
+      headR.position.z = -0.5;
+      suv.add(headR);
+      const tailL = box(0.16, 0.14, 0.18, MAT.tail);
+      tailL.position.set(2.05, 0.95, 0.5);
+      suv.add(tailL);
+      const tailR = tailL.clone();
+      tailR.material = MAT.tail;
+      tailR.position.z = -0.5;
+      suv.add(tailR);
+
+      // ===== Колёса (ОСЬ = X) =====
+      // Ориентируем геометрию цилиндра так, чтобы ось была вдоль X (лево-право)
+      function makeTireGeo(n) {
+        const g = new THREE.CylinderGeometry(0.5, 0.5, 0.32, n);
+        g.rotateX(Math.PI / 2);
+        return g;
+      }
+      function makeRimGeo(n) {
+        const g = new THREE.CylinderGeometry(0.28, 0.28, 0.34, n);
+        g.rotateX(Math.PI / 2);
+        return g;
+      }
+      let tireGeo = makeTireGeo(12),
+        rimGeo = makeRimGeo(10);
+
+      // wheelRoot → steerPivot(Y) → rollGroup(X) → meshes (без доп. rotation!)
+      function createWheel(isFront) {
+        const wheelRoot = new THREE.Group();
+        const steerPivot = new THREE.Group();
+        const rollGroup = new THREE.Group();
+
+        const tire = new THREE.Mesh(tireGeo, MAT.rubber);
+        const rim = new THREE.Mesh(rimGeo, MAT.trims);
+        rollGroup.add(tire, rim);
+
+        // метки на покрышке — видно спин
+        const markG = new THREE.BoxGeometry(0.05, 0.05, 0.34);
+        const marks = new THREE.Group();
+        const R = 0.5;
+        for (let i = 0; i < 3; i++) {
+          const a = i * ((Math.PI * 2) / 3);
+          const s = new THREE.Mesh(markG, MAT.mark);
+          s.position.set(0, Math.cos(a) * R, Math.sin(a) * R);
+          marks.add(s);
+        }
+        rollGroup.add(marks);
+
+        steerPivot.add(rollGroup);
+        wheelRoot.add(steerPivot);
+        wheelRoot.userData = { steerPivot, rollGroup, isFront };
+        return wheelRoot;
+      }
+      const FL = createWheel(true);
+      FL.position.set(-1.35, 0.6, 0.98);
+      const FR = createWheel(true);
+      FR.position.set(-1.35, 0.6, -0.98);
+      const RL = createWheel(false);
+      RL.position.set(1.35, 0.6, 0.98);
+      const RR = createWheel(false);
+      RR.position.set(1.35, 0.6, -0.98);
+      suv.add(FL, FR, RL, RR);
+      scene.add(suv);
+
+      // ===== Управление/физика (простая) =====
+      let speed = 0,
+        steer = 0,
+        quality = false;
+      const P = {
+        maxSteer: 0.5,
+        accel: 6,
+        brake: 9,
+        friction: 1.2,
+        handFric: 5,
+      };
+      const keys = {};
+      addEventListener("keydown", (e) => (keys[e.code] = true));
+      addEventListener("keyup", (e) => (keys[e.code] = false));
+
+      function updateDrive(dt) {
+        const hb = !!keys["Space"];
+        if (keys["KeyW"]) speed += P.accel * dt;
+        if (keys["KeyS"]) speed -= P.brake * dt;
+        const fr = (hb ? P.handFric : P.friction) * dt;
+        if (!keys["KeyW"] && !keys["KeyS"]) {
+          if (speed > 0) speed = Math.max(0, speed - fr);
+          else if (speed < 0) speed = Math.min(0, speed + fr);
+        }
+        speed = THREE.MathUtils.clamp(speed, -10, 14);
+
+        if (keys["KeyA"]) steer += 2.0 * dt;
+        if (keys["KeyD"]) steer -= 2.0 * dt;
+        steer = THREE.MathUtils.clamp(steer, -P.maxSteer, P.maxSteer);
+        if (!keys["KeyA"] && !keys["KeyD"]) steer *= 1 - 3 * dt;
+
+        // движение корпуса
+        suv.rotation.y += steer * (speed / 6) * dt;
+        const fwd = new THREE.Vector3(
+          -Math.cos(suv.rotation.y),
+          0,
+          -Math.sin(suv.rotation.y)
+        );
+        suv.position.addScaledVector(fwd, speed * dt);
+
+        // передние поворачивают по Y
+        FL.userData.steerPivot.rotation.y = steer;
+        FR.userData.steerPivot.rotation.y = steer;
+
+        // кручение по X (ось колеса)
+        const roll = speed * dt * 2.0;
+        [FL, FR, RL, RR].forEach(
+          (w) => (w.userData.rollGroup.rotation.z -= roll)
+        );
+      }
+
+      // ===== Quality toggle =====
+      document.getElementById("qualityBtn").onclick = () => {
+        quality = !quality;
+        renderer.shadowMap.enabled = quality;
+        ground.receiveShadow = quality;
+        sun.intensity = quality ? 1 : 0.65;
+
+        const set = quality ? High : Fast;
+        MAT = set;
+        bodyUp.material = set.paint1;
+        bodyLow.material = set.paint2;
+        glazing.material = set.glass;
+        frame.material = set.trims;
+        headL.material = set.head;
+        headR.material = set.head;
+        tailL.material = set.tail;
+        tailR.material = set.tail;
+
+        [FL, FR, RL, RR].forEach((w) => {
+          w.userData.rollGroup.traverse((o) => {
+            if (o.isMesh) {
+              if (o.geometry === tireGeo) o.material = set.rubber;
+              else if (o.geometry === rimGeo) o.material = set.trims;
+              else o.material = set.mark;
+            }
+          });
+        });
+
+        const newTire = makeTireGeo(quality ? 24 : 12);
+        const newRim = makeRimGeo(quality ? 20 : 10);
+        [FL, FR, RL, RR].forEach((w) => {
+          w.userData.rollGroup.traverse((o) => {
+            if (o.isMesh && o.geometry === tireGeo) o.geometry = newTire;
+            if (o.isMesh && o.geometry === rimGeo) o.geometry = newRim;
+          });
+        });
+        tireGeo = newTire;
+        rimGeo = newRim;
+
+        document.getElementById("qualityBtn").textContent =
+          "Quality: " + (quality ? "ON" : "OFF");
+      };
+
+      // Дев-хелпер: оси (H)
+      let axes = null;
+      addEventListener("keydown", (e) => {
+        if (e.code === "KeyH") {
+          if (axes) {
+            scene.remove(axes);
+            axes = null;
+          } else {
+            axes = new THREE.AxesHelper(2);
+            axes.position.copy(suv.position);
+            scene.add(axes);
+          }
+        }
+      });
+
+      // ===== Анимация =====
+      let last = performance.now();
+      function animate() {
+        requestAnimationFrame(animate);
+        const now = performance.now();
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        updateDrive(dt);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      addEventListener("resize", () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+      });
+    </script>
+  </body>
+</html>

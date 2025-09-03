@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Видеолаба — загрузка и эффекты</title>
+    <style>
+      :root {
+        --bg: #0b0f14;
+        --panel: #121821;
+        --ink: #e9eef6;
+        --muted: #9fb0c6;
+        --accent: #5ac8fa;
+        --accent-2: #7ef29a;
+        --danger: #ff6b6b;
+        --radius: 16px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+          sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .title {
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        font-size: clamp(22px, 3vw, 32px);
+        margin: 0 0 12px;
+      }
+      .subtitle {
+        color: var(--muted);
+        margin-bottom: 18px;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        background: var(--panel);
+        padding: 16px;
+        border-radius: var(--radius);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .row-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .ctrl {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 12px;
+        border-radius: 12px;
+      }
+      label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      input[type="file"],
+      select,
+      button {
+        width: 100%;
+      }
+      input[type="range"] {
+        width: 100%;
+      }
+      select,
+      input[type="file"] {
+        background: #0e141c;
+        color: var(--ink);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 10px 12px;
+        border-radius: 10px;
+      }
+      button {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #042a3a;
+        border: none;
+        padding: 12px 14px;
+        font-weight: 800;
+        border-radius: 12px;
+        cursor: pointer;
+        box-shadow: 0 6px 24px rgba(90, 200, 250, 0.25);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .danger {
+        background: var(--danger);
+        color: #1a0b0b;
+        box-shadow: 0 6px 24px rgba(255, 107, 107, 0.25);
+      }
+
+      .stage {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .panes {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .pane {
+        background: var(--panel);
+        padding: 12px;
+        border-radius: var(--radius);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .pane h3 {
+        margin: 6px 8px 10px;
+        font-size: 14px;
+        color: var(--muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .frame {
+        aspect-ratio: 16/9;
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+        background: #030507;
+        display: grid;
+        place-items: center;
+      }
+      video,
+      canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: #000;
+      }
+
+      .result {
+        background: var(--panel);
+        padding: 12px;
+        border-radius: var(--radius);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .bar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .chip {
+        padding: 8px 10px;
+        border: 1px dashed rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      @media (min-width: 900px) {
+        .controls {
+          grid-template-columns: 2fr 1fr 1fr;
+          align-items: end;
+        }
+        .panes {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1 class="title">Видеолаба — загрузи ролик и примени эффекты</h1>
+      <p class="subtitle">
+        Загрузите видео, выберите эффект и сравните исходник (слева) и обработку
+        (справа). Можно записать результат и скачать.
+      </p>
+
+      <section class="controls" aria-label="Панель управления">
+        <div class="ctrl">
+          <label for="file">1) Выберите видео (MP4/WebM/MOV):</label>
+          <input id="file" type="file" accept="video/*" />
+        </div>
+
+        <div class="ctrl">
+          <label for="effect">2) Эффект</label>
+          <select id="effect">
+            <option value="none">Без эффекта</option>
+            <option value="grayscale">Ч/б (грэйскейл)</option>
+            <option value="sepia">Сепия</option>
+            <option value="invert">Инверсия</option>
+            <option value="brightness">Яркость/Контраст</option>
+            <option value="blur">Размытие</option>
+            <option value="edges">Контуры (Собель)</option>
+          </select>
+        </div>
+
+        <div class="ctrl" id="dyn-controls">
+          <label>Параметры эффекта</label>
+          <div class="row-3">
+            <div>
+              <small class="muted">Яркость</small>
+              <input
+                id="brightness"
+                type="range"
+                min="0"
+                max="300"
+                value="100"
+              />
+            </div>
+            <div>
+              <small class="muted">Контраст</small>
+              <input id="contrast" type="range" min="0" max="300" value="100" />
+            </div>
+            <div>
+              <small class="muted">Размытие</small>
+              <input id="blur" type="range" min="0" max="20" value="0" />
+            </div>
+          </div>
+        </div>
+
+        <div class="ctrl">
+          <label>3) Управление</label>
+          <div class="row">
+            <button id="playBtn" disabled>▶️ Воспроизвести</button>
+            <button id="pauseBtn" disabled class="danger">⏸️ Пауза</button>
+          </div>
+        </div>
+
+        <div class="ctrl">
+          <label>4) Запись результата</label>
+          <div class="row">
+            <button id="recBtn" disabled>⏺️ Начать запись</button>
+            <button id="stopRecBtn" disabled class="danger">
+              ⏹️ Остановить
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="stage">
+        <div class="panes">
+          <div class="pane">
+            <h3>Исходное видео</h3>
+            <div class="frame">
+              <video id="src" controls playsinline></video>
+            </div>
+          </div>
+          <div class="pane">
+            <h3>Обработанное (в реальном времени)</h3>
+            <div class="frame">
+              <canvas id="out"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="result">
+          <h3>Итоговое видео (запись обработанного)</h3>
+          <div class="bar" style="margin: 10px 0 12px">
+            <span class="chip" id="recInfo">Не записывается</span>
+            <a
+              id="downloadLink"
+              class="chip"
+              download="processed.webm"
+              style="display: none; text-decoration: none"
+              >⬇️ Скачать processed.webm</a
+            >
+          </div>
+          <div class="frame">
+            <video id="final" controls playsinline></video>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      (() => {
+        const fileInput = document.getElementById("file");
+        const effectSel = document.getElementById("effect");
+        const srcVideo = document.getElementById("src");
+        const canvas = document.getElementById("out");
+        const ctx = canvas.getContext("2d");
+        const brightnessEl = document.getElementById("brightness");
+        const contrastEl = document.getElementById("contrast");
+        const blurEl = document.getElementById("blur");
+
+        const playBtn = document.getElementById("playBtn");
+        const pauseBtn = document.getElementById("pauseBtn");
+        const recBtn = document.getElementById("recBtn");
+        const stopRecBtn = document.getElementById("stopRecBtn");
+        const recInfo = document.getElementById("recInfo");
+        const downloadLink = document.getElementById("downloadLink");
+        const finalVideo = document.getElementById("final");
+
+        let rafId = null;
+        let mediaRecorder = null;
+        let chunks = [];
+
+        // загрузка видео
+        fileInput.addEventListener("change", () => {
+          const file = fileInput.files?.[0];
+          if (!file) return;
+          const url = URL.createObjectURL(file);
+          srcVideo.src = url;
+          srcVideo.load();
+          srcVideo.addEventListener("loadedmetadata", initCanvas, {
+            once: true,
+          });
+          playBtn.disabled = false;
+          pauseBtn.disabled = false;
+        });
+
+        function initCanvas() {
+          // подгоняем размер канваса под видео
+          const w = srcVideo.videoWidth || 1280;
+          const h = srcVideo.videoHeight || 720;
+          // ограничим до FullHD для скорости
+          const scale = Math.min(1920 / w, 1080 / h, 1);
+          canvas.width = Math.round(w * scale);
+          canvas.height = Math.round(h * scale);
+          loop();
+          recBtn.disabled = false;
+        }
+
+        // основной цикл рендера
+        function loop() {
+          cancelAnimationFrame(rafId);
+          const run = () => {
+            applyFrame();
+            rafId = requestAnimationFrame(run);
+          };
+          rafId = requestAnimationFrame(run);
+        }
+
+        function applyFrame() {
+          if (srcVideo.readyState < 2) return; // метаданные ок
+
+          // быстрые эффекты через контекстные фильтры
+          const eff = effectSel.value;
+          const bright = Number(brightnessEl.value) / 100; // 1 = 100%
+          const contr = Number(contrastEl.value) / 100; // 1 = 100%
+          const bl = Number(blurEl.value); // px
+
+          // по умолчанию — без фильтра
+          ctx.filter = "none";
+
+          if (eff === "none") {
+            ctx.filter = `brightness(${bright}) contrast(${contr}) blur(${bl}px)`;
+            ctx.drawImage(srcVideo, 0, 0, canvas.width, canvas.height);
+          } else if (
+            eff === "grayscale" ||
+            eff === "sepia" ||
+            eff === "invert" ||
+            eff === "blur" ||
+            eff === "brightness"
+          ) {
+            // эти эффекты можно собрать контекстным фильтром (быстро на GPU)
+            const base = [];
+            if (eff === "grayscale") base.push("grayscale(1)");
+            if (eff === "sepia") base.push("sepia(1)");
+            if (eff === "invert") base.push("invert(1)");
+            if (eff === "blur") base.push(`blur(${bl}px)`);
+            // яркость/контраст доступны и как общий модификатор
+            base.push(`brightness(${bright})`);
+            base.push(`contrast(${contr})`);
+            ctx.filter = base.join(" ");
+            ctx.drawImage(srcVideo, 0, 0, canvas.width, canvas.height);
+          } else if (eff === "edges") {
+            // контуры — вручную через Собеля
+            ctx.filter = `brightness(${bright}) contrast(${contr})`;
+            ctx.drawImage(srcVideo, 0, 0, canvas.width, canvas.height);
+            const { width, height } = canvas;
+            const img = ctx.getImageData(0, 0, width, height);
+            const out = sobel(img);
+            ctx.putImageData(out, 0, 0);
+          } else {
+            ctx.drawImage(srcVideo, 0, 0, canvas.width, canvas.height);
+          }
+        }
+
+        // Простая реализация Собеля (монохромные контуры)
+        function sobel(imageData) {
+          const { data, width, height } = imageData;
+          // в градации серого
+          const gray = new Uint8ClampedArray(width * height);
+          for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+            // luma Rec. 601
+            gray[j] =
+              (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) | 0;
+          }
+          const gxK = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+          const gyK = [1, 2, 1, 0, 0, 0, -1, -2, -1];
+          const out = new ImageData(width, height);
+          for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+              let gx = 0,
+                gy = 0;
+              let idx = 0;
+              for (let ky = -1; ky <= 1; ky++) {
+                for (let kx = -1; kx <= 1; kx++) {
+                  const v = gray[(y + ky) * width + (x + kx)];
+                  gx += v * gxK[idx];
+                  gy += v * gyK[idx];
+                  idx++;
+                }
+              }
+              const mag = Math.min(255, Math.hypot(gx, gy));
+              const p = (y * width + x) * 4;
+              out.data[p] = out.data[p + 1] = out.data[p + 2] = mag;
+              out.data[p + 3] = 255;
+            }
+          }
+          return out;
+        }
+
+        // Кнопки play/pause
+        playBtn.addEventListener("click", async () => {
+          try {
+            await srcVideo.play();
+          } catch (e) {
+            console.warn(e);
+          }
+        });
+        pauseBtn.addEventListener("click", () => srcVideo.pause());
+
+        // Запись обработанного канваса
+        let stream = null;
+        recBtn.addEventListener("click", () => {
+          try {
+            stream = canvas.captureStream(30); // 30 fps
+            chunks = [];
+            mediaRecorder = new MediaRecorder(stream, {
+              mimeType: pickMimeType(),
+            });
+            mediaRecorder.ondataavailable = (e) => {
+              if (e.data && e.data.size) chunks.push(e.data);
+            };
+            mediaRecorder.onstop = onRecordingStop;
+            mediaRecorder.start();
+            recInfo.textContent = "Идёт запись…";
+            recBtn.disabled = true;
+            stopRecBtn.disabled = false;
+          } catch (err) {
+            console.error(err);
+            alert(
+              "Не удалось начать запись. Ваш браузер поддерживает MediaRecorder?"
+            );
+          }
+        });
+
+        stopRecBtn.addEventListener("click", () => {
+          if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+          }
+          stopRecBtn.disabled = true;
+          recBtn.disabled = false;
+          recInfo.textContent = "Обработка записи…";
+        });
+
+        function onRecordingStop() {
+          const blob = new Blob(chunks, {
+            type: mediaRecorder.mimeType || "video/webm",
+          });
+          const url = URL.createObjectURL(blob);
+          finalVideo.src = url;
+          finalVideo.load();
+          downloadLink.href = url;
+          downloadLink.style.display = "inline-block";
+          recInfo.textContent = "Готово: запись сформирована";
+        }
+
+        function pickMimeType() {
+          // Попробуем предпочесть webm vp9, затем vp8, затем по умолчанию
+          const types = [
+            "video/webm;codecs=vp9",
+            "video/webm;codecs=vp8",
+            "video/webm",
+          ];
+          for (const t of types) {
+            if (MediaRecorder.isTypeSupported(t)) return t;
+          }
+          return "";
+        }
+
+        // перезапуск рендера при изменении эффектов/ползунков
+        effectSel.addEventListener("change", applyFrame);
+        [brightnessEl, contrastEl, blurEl].forEach((el) =>
+          el.addEventListener("input", applyFrame)
+        );
+      })();
+    </script>
+  </body>
+</html>

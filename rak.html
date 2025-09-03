@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Интерактивное дерево: развитие рака</title>
+<style>
+  :root{
+    --bg:#0f1220;
+    --panel:#14182a;
+    --glass:rgba(255,255,255,.06);
+    --text:#e8ecff;
+    --muted:#a9b1d6;
+    --accent:#8ab4ff;
+    --good:#76d39b;
+    --warn:#ffdd88;
+    --bad:#ff7b7b;
+    --line:#2a3357;
+    --node:#7aa2f7;
+    --nodeFill:#1b2140;
+    --nodeHover:#2a3b7a;
+  }
+  html,body{height:100%;background:radial-gradient(1200px 800px at 20% 10%, #19203f 0%, #0f1220 60%), var(--bg);color:var(--text);margin:0;font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  .app{display:grid;grid-template-columns:1fr 320px;gap:12px;height:100%;padding:12px;box-sizing:border-box}
+  .board{position:relative;border-radius:16px;background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));box-shadow:0 10px 30px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.05);overflow:hidden}
+  .side{border-radius:16px;background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));box-shadow:0 10px 30px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.05);display:flex;flex-direction:column;min-height:0}
+  header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+  header h1{font-size:16px;margin:0}
+  header .sub{color:var(--muted);font-size:12px}
+  .legend{display:flex;gap:8px;margin-left:auto;opacity:.9;flex-wrap:wrap}
+  .pill{display:flex;align-items:center;gap:6px;background:var(--glass);border:1px solid rgba(255,255,255,.08);padding:6px 8px;border-radius:999px;font-size:12px}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .dot.good{background:var(--good)}
+  .dot.warn{background:var(--warn)}
+  .dot.bad{background:var(--bad)}
+  #svg{width:100%;height:100%;}
+  .hint{position:absolute;left:12px;bottom:10px;color:var(--muted);font-size:12px;background:rgba(0,0,0,.28);backdrop-filter:blur(6px);padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.06)}
+  .panel{padding:12px 14px;overflow:auto}
+  .card{background:var(--glass);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;margin-bottom:10px}
+  .card h3{margin:0 0 6px 0;font-size:14px}
+  .kv{display:grid;grid-template-columns:110px 1fr;gap:6px 8px}
+  .muted{color:var(--muted)}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  button{
+    background:linear-gradient(180deg,#2a3a73,#1c2753);
+    border:1px solid rgba(138,180,255,.4);
+    color:#eaf2ff;border-radius:10px;padding:8px 10px;font-weight:600;cursor:pointer}
+  button:active{transform:translateY(1px)}
+  /* SVG styles */
+  .link{stroke:var(--line);stroke-width:1.4;fill:none}
+  .node circle{fill:var(--nodeFill);stroke:var(--node);stroke-width:1.5;transition:.15s}
+  .node:hover circle{fill:var(--nodeHover)}
+  .node text{font-size:13px;fill:var(--text);dominant-baseline:middle}
+  /* Бейджи */
+  .badge{ font-size:11px; fill:#0b0f1f; font-weight:600; dominant-baseline:middle }
+  .badge-rect{ rx:8; ry:8; stroke-width:.8; filter:url(#badgeShadow) }
+  .badge-good{ fill:rgba(118,211,155,.9); stroke:#2b714b }
+  .badge-warn{ fill:rgba(255,221,136,.9); stroke:#9a8543 }
+  .badge-bad { fill:rgba(255,123,123,.92); stroke:#8a3b3b }
+  @media (max-width: 980px){
+    .app{grid-template-columns:1fr}
+    .side{height:40vh}
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="board">
+      <header>
+        <h1>Дерево прогрессии рака</h1>
+        <span class="sub">Клик по <b>кружку</b> — раскрывает следующий уровень</span>
+        <div class="legend">
+          <span class="pill"><span class="dot good"></span>Ранний фактор</span>
+          <span class="pill"><span class="dot warn"></span>Предраковое</span>
+          <span class="pill"><span class="dot bad"></span>Опасная стадия</span>
+        </div>
+      </header>
+      <svg id="svg">
+        <defs>
+          <filter id="softGlow" x="-25%" y="-25%" width="150%" height="150%">
+            <feGaussianBlur stdDeviation="7" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <!-- Тень для бейджа -->
+          <filter id="badgeShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-opacity="0.35"/>
+          </filter>
+        </defs>
+        <g id="viewport" transform="translate(240,220) scale(1)">
+          <g id="links"></g>
+          <g id="nodes"></g>
+        </g>
+      </svg>
+      <div class="hint">Колёсико — зум, потяни фон — панорамирование. Двойной клик по фону — сброс.</div>
+    </div>
+    <aside class="side">
+      <header><h1>Справка</h1></header>
+      <div class="panel" id="info">
+        <div class="card">
+          <h3 id="title">Выберите узел</h3>
+          <div class="kv">
+            <div class="muted">Тип</div><div id="type">—</div>
+            <div class="muted">Уровень</div><div id="depth">—</div>
+            <div class="muted">Детей</div><div id="children">—</div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Быстрые действия</h3>
+          <div class="btns">
+            <button id="expand1">Раскрыть только следующий уровень</button>
+            <button id="expandAll">Раскрыть всё ниже</button>
+            <button id="collapseAll">Свернуть всё ниже</button>
+            <button id="resetView">Сбросить вид</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Пояснение</h3>
+          <p class="muted">Структура схематично показывает путь от <b>факторов риска</b> и <b>повреждений ДНК</b> к <b>опухоли</b> и возможным <b>метастазам</b>. Это обучающая визуализация, упрощающая связи для наглядности.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+<script>
+/* ----------- ДАННЫЕ ДЕРЕВА (упрощённая схема) ----------- */
+const data = {
+  name: "Запуск процесса",
+  tag: "warn",
+  info: "Начальные условия, которые повышают риск онкогенеза.",
+  children: [
+    {
+      name: "Факторы риска", tag: "warn",
+      info: "Внешние и внутренние факторы, увеличивающие вероятность мутаций.",
+      children: [
+        { name: "Курение", tag:"bad", info:"Канцерогены табачного дыма повреждают ДНК." },
+        { name: "УФ/Ионизирующее излучение", tag:"warn", info:"Провоцирует разрывы и ошибки репарации ДНК." },
+        { name: "Хроническое воспаление", tag:"warn", info:"Постоянная пролиферация и стресс для клеток." },
+        { name: "Наследственные мутации (BRCA и др.)", tag:"warn", info:"Врожденные нарушения систем репарации." }
+      ]
+    },
+    {
+      name: "Повреждение ДНК", tag: "warn",
+      info: "Ошибки в геноме — точковые мутации, делеции, транслокации.",
+      children: [
+        { name: "Онкогены активированы (RAS, MYC)", tag:"bad", info:"Гены-ускорители деления включены." },
+        { name: "Инактивация супрессоров (TP53, RB)", tag:"bad", info:"Тормоза роста отключены." },
+        { name: "Эпигенетические сбои", tag:"warn", info:"Нарушение метилирования и регуляции генов." }
+      ]
+    },
+    {
+      name: "Сбой контроля", tag: "bad",
+      info: "Нарушение апоптоза и контрольных точек.",
+      children: [
+        { name: "Избегание апоптоза", tag:"bad", info:"Клетки не умирают при ошибках." },
+        { name: "Бесконтрольная пролиферация", tag:"bad", info:"Рост без сигналов." },
+        { name: "Ангиогенез", tag:"warn", info:"Рост сосудов для питания опухоли." }
+      ]
+    },
+    {
+      name: "Опухоль", tag:"bad",
+      info: "Клональная популяция атипичных клеток.",
+      children: [
+        { name: "Доброкачественная", tag:"warn", info:"Ограниченный рост, без инвазии." },
+        {
+          name: "Злокачественная (рак)", tag:"bad",
+          info:"Инвазия в ткани и метастазирование.",
+          children: [
+            {
+              name: "Инвазия", tag:"bad",
+              info:"Прорастание базальной мембраны и соседних тканей."
+            },
+            {
+              name: "Метастазы", tag:"bad",
+              info:"Распространение в отдалённые органы.",
+              children: [
+                { name: "Лимфогенные", tag:"warn", info:"Через лимфатические сосуды." },
+                { name: "Гематогенные", tag:"warn", info:"Через кровь — печень, лёгкие и др." },
+                { name: "Имплантационные", tag:"warn", info:"По серозным оболочкам." }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      name: "Клиника и диагностика", tag:"good",
+      info:"Выявление на ранних стадиях улучшает прогноз.",
+      children: [
+        { name: "Скрининг", tag:"good", info:"Маммография, КТ низких доз, колоноскопия и др." },
+        { name: "Биомаркеры", tag:"good", info:"PSA, CA-125, CTC и др. в контексте клиники." },
+        { name: "Визуализация", tag:"good", info:"УЗИ, КТ/МРТ, ПЭТ-КТ." },
+        { name: "Биопсия", tag:"good", info:"Гистология — золотой стандарт." }
+      ]
+    },
+    {
+      name: "Терапия", tag:"good",
+      info:"Мультидисциплинарный подход.",
+      children: [
+        { name: "Хирургия", tag:"good", info:"Удаление очага." },
+        { name: "Лучевая терапия", tag:"good", info:"Локальный контроль." },
+        { name: "Лекарственная", tag:"good", info:"Химио-, таргетная, иммунотерапия." },
+        { name: "Поддерживающая", tag:"good", info:"Обезболивание, нутритивная поддержка и т.д." }
+      ]
+    }
+  ]
+};
+
+/* ----------- УТИЛИТЫ ----------- */
+function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
+
+/* ----------- ДЕРЕВО: раскладка (без библиотек) ----------- */
+let root = prepare(clone(data));
+let selected = root;
+
+function prepare(node, depth=0){
+  node.depth = depth;
+  node.id = Math.random().toString(36).slice(2);
+  node._children = node.children ? node.children.map(ch => prepare(ch, depth+1)) : [];
+  node.children = []; // по умолчанию свернуто
+  node.allChildren = node._children.slice();
+  return node;
+}
+
+// стартово можно раскрыть 1-й уровень
+root.children = root._children;
+root._children = [];
+
+const cfg = { nodeX: 220, nodeY: 60, r: 16, vgap: 30, hgap: 220, paddingY: 18 };
+
+function layout(node, x=0, y=0){
+  // возвращает высоту поддерева
+  const kids = node.children || [];
+  if(kids.length === 0){
+    node.x = x;
+    node.y = y;
+    return cfg.nodeY;
+  }
+  // высоты детей
+  const heights = [];
+  let accY = y;
+  kids.forEach((ch,i)=>{
+    const h = layout(ch, x + cfg.hgap, accY);
+    heights.push(h);
+    accY += h + cfg.vgap;
+  });
+  const total = heights.reduce((a,b)=>a+b,0) + cfg.vgap*(kids.length-1);
+  node.x = x;
+  node.y = y + total/2 - cfg.nodeY/2;
+  return Math.max(total, cfg.nodeY);
+}
+
+/* ----------- РЕНДЕР ----------- */
+const svg = document.getElementById('svg');
+const viewport = document.getElementById('viewport');
+const gLinks = document.getElementById('links');
+const gNodes = document.getElementById('nodes');
+
+function update(){
+  // очистка
+  gLinks.innerHTML = '';
+  gNodes.innerHTML = '';
+  // компоновка
+  layout(root, 0, 0);
+
+  // собрать список видимых узлов/связей DFS
+  const nodes = [];
+  const links = [];
+  (function walk(n){
+    nodes.push(n);
+    (n.children||[]).forEach(ch=>{
+      links.push({from:n, to:ch});
+      walk(ch);
+    });
+  })(root);
+
+  // линии
+  links.forEach(l=>{
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    const x1 = l.from.x, y1 = l.from.y;
+    const x2 = l.to.x,   y2 = l.to.y;
+    const mx = (x1 + x2)/2;
+    const d = `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+    path.setAttribute('d', d);
+    path.setAttribute('class','link');
+    path.setAttribute('stroke-linecap','round');
+    gLinks.appendChild(path);
+  });
+
+  // узлы
+  nodes.forEach(n=>{
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','node');
+    g.setAttribute('transform',`translate(${n.x},${n.y})`);
+
+    // блокируем панорамирование по кликам на узле
+    g.addEventListener('mousedown', e => e.stopPropagation(), {passive:true});
+    g.addEventListener('wheel', e => e.stopPropagation(), {passive:true});
+
+    // КРУГ
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('r', cfg.r + (n.children.length?1:0));
+    circle.setAttribute('filter','url(#softGlow)');
+    // клик по кругу — раскрыть один уровень
+    circle.addEventListener('click', e=>{
+      e.stopPropagation();
+      expandOneLevel(n);
+    });
+
+    // ТЕКСТ ЛЕЙБЛ
+    const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x', cfg.r + 12);
+    label.setAttribute('y', 2);
+    label.textContent = n.name;
+
+    // БЕЙДЖ по риску (точная подгонка к тексту)
+    const badge = document.createElementNS('http://www.w3.org/2000/svg','g');
+    const rect  = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    const badgeText = document.createElementNS('http://www.w3.org/2000/svg','text');
+    const t = n.tag==='bad' ? 'высокий риск' : (n.tag==='warn' ? 'умеренный' : 'ранняя стадия');
+
+    // сначала текст — нужно добавить в DOM, чтобы getBBox() работал
+    badgeText.textContent = t;
+    badgeText.setAttribute('class','badge');
+    badgeText.setAttribute('x', cfg.r + 12);
+    badgeText.setAttribute('y', 20);
+    badge.appendChild(badgeText);
+    g.appendChild(badge); // важно: в DOM до измерения
+
+    // меряем реальные габариты
+    const paddingX = 8, paddingY = 4;
+    const bb = badgeText.getBBox();
+    rect.setAttribute('x', bb.x - paddingX);
+    rect.setAttribute('y', bb.y - paddingY);
+    rect.setAttribute('width',  bb.width  + paddingX*2);
+    rect.setAttribute('height', bb.height + paddingY*2);
+    rect.setAttribute('class','badge-rect ' + (n.tag==='bad'?'badge-bad':(n.tag==='warn'?'badge-warn':'badge-good')));
+
+    // кладём фон под текстом
+    badge.insertBefore(rect, badgeText);
+
+    // общий клик по узлу — обычный toggle
+    g.addEventListener('click', ()=>{
+      toggle(n);
+    });
+
+    // hover для панели
+    g.addEventListener('mouseenter', ()=> showInfo(n));
+
+    g.appendChild(circle);
+    g.appendChild(label);
+    gNodes.appendChild(g);
+  });
+
+  // обновить панель для выбранного
+  showInfo(selected);
+}
+
+/* ----------- ДЕЙСТВИЯ ----------- */
+function toggle(n){
+  if(n.children && n.children.length){
+    // свернуть
+    n._children = n.children.slice();
+    n.children = [];
+  } else {
+    // раскрыть полностью, как раньше
+    n.children = n._children.slice();
+    n._children = [];
+  }
+  selected = n;
+  update();
+}
+
+function expandOneLevel(n){
+  if(!n.allChildren) n.allChildren = (n.children||[]).concat(n._children||[]);
+  // раскрыть текущий узел
+  n.children = n.allChildren.slice();
+  n._children = [];
+  // но всех внуков свернуть
+  n.children.forEach(ch=>{
+    if(!ch.allChildren) ch.allChildren = (ch.children||[]).concat(ch._children||[]);
+    ch._children = (ch.children||[]).slice();
+    ch.children = [];
+  });
+  selected = n;
+  update();
+}
+
+function expandAll(n){
+  n.children = n.allChildren ? n.allChildren.slice() : (n.children||[]).concat(n._children||[]);
+  n._children = [];
+  (n.children||[]).forEach(expandAll);
+}
+
+function collapseAll(n){
+  (n.children||[]).forEach(collapseAll);
+  if(n !== root){
+    n._children = (n.children||[]).slice();
+    n.children = [];
+  }
+}
+
+function showInfo(n){
+  selected = n;
+  document.getElementById('title').textContent = n.name;
+  document.getElementById('type').textContent = tagTitle(n.tag);
+  document.getElementById('depth').textContent = n.depth;
+  const cnt = (n.children?n.children.length:0) + (n._children?n._children.length:0);
+  document.getElementById('children').textContent = cnt;
+}
+
+/* ----------- ПАНЕЛЬ КНОПОК ----------- */
+document.getElementById('expand1').onclick = ()=>{ expandOneLevel(selected); };
+document.getElementById('expandAll').onclick = ()=>{ expandAll(selected); update(); };
+document.getElementById('collapseAll').onclick = ()=>{ collapseAll(selected); update(); };
+document.getElementById('resetView').onclick = resetView;
+
+/* ----------- ПАНОРАМА/ЗУМ ФОНА ----------- */
+let state = { tx:240, ty:220, k:1, panning:false, px:0, py:0 };
+
+function applyTransform(){
+  viewport.setAttribute('transform', `translate(${state.tx},${state.ty}) scale(${state.k})`);
+}
+
+svg.addEventListener('wheel', (e)=>{
+  e.preventDefault();
+  const scaleFactor = 1.06;
+  const pt = clientToSvg(e.clientX, e.clientY);
+  const dir = e.deltaY < 0 ? 1 : -1;
+  const k2 = clamp(state.k * (dir>0?scaleFactor:1/scaleFactor), 0.25, 3.5);
+
+  // зум к курсору
+  state.tx = pt.x - (pt.x - state.tx) * (k2/state.k);
+  state.ty = pt.y - (pt.y - state.ty) * (k2/state.k);
+  state.k = k2;
+  applyTransform();
+},{passive:false});
+
+svg.addEventListener('dblclick', (e)=>{
+  if(e.target.closest('.node')) return; // не сбрасывать по узлу
+  resetView();
+});
+
+function resetView(){
+  state = { tx:240, ty:220, k:1, panning:false, px:0, py:0 };
+  applyTransform();
+}
+
+svg.addEventListener('mousedown', (e)=>{
+  if(e.target.closest('.node')) return; // клики по узлам не начинают панорамирование
+  state.panning = true;
+  state.px = e.clientX;
+  state.py = e.clientY;
+});
+window.addEventListener('mousemove', (e)=>{
+  if(!state.panning) return;
+  const dx = e.clientX - state.px;
+  const dy = e.clientY - state.py;
+  state.tx += dx;
+  state.ty += dy;
+  state.px = e.clientX;
+  state.py = e.clientY;
+  applyTransform();
+});
+window.addEventListener('mouseup', ()=> state.panning=false);
+
+/* ----------- ПОМОЩНИКИ ----------- */
+function clientToSvg(cx, cy){
+  const pt = svg.createSVGPoint();
+  pt.x = cx; pt.y = cy;
+  const m = viewport.getScreenCTM().inverse();
+  const p = pt.matrixTransform(m);
+  return {x:p.x, y:p.y};
+}
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+function tagTitle(tag){
+  return tag==='bad'?'Опасная стадия':(tag==='warn'?'Промежуточный риск':'Ранний фактор/диагностика');
+}
+
+/* ----------- ПЕРВЫЙ РЕНДЕР ----------- */
+update();
+</script>
+</body>
+</html>

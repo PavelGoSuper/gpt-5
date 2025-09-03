@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Интерактивный курс по физике — v5 (с инфографикой)</title>
+<style>
+  :root{ --bg:#0b1324; --panel:#121b33; --panel-2:#0f1730; --text:#eaf1ff; --muted:#9fb3ff; --accent:#6ea8ff; --good:#20c997; --bad:#ff6b6b; --yellow:#ffd166; --shadow:0 10px 30px rgba(0,0,0,.35); --radius:16px }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{ margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial; color:var(--text);
+        background: radial-gradient(1200px 800px at 80% -10%,#1b2550 0%, rgba(27,37,80,0) 60%),
+                    radial-gradient(900px 600px at -10% 10%,#0f3579 0, rgba(15,53,121,0) 60%),
+                    var(--bg);
+        display:flex; flex-direction:column }
+  header{ position:sticky; top:0; z-index:10; background:linear-gradient(180deg, rgba(11,19,36,.9), rgba(11,19,36,.6)); backdrop-filter: blur(6px); border-bottom:1px solid rgba(255,255,255,.08) }
+  .wrap{max-width:1366px; margin:0 auto; padding:16px}
+  .title{display:flex; align-items:center; gap:14px}
+  .logo{width:36px; height:36px; border-radius:10px; background:conic-gradient(from 220deg at 50% 50%, #6ea8ff, #20c997, #ffd166, #6ea8ff); box-shadow:var(--shadow)}
+  .title h1{font-size:18px; margin:0}
+  .subtitle{color:var(--muted); font-size:13px}
+  main{flex:1}
+  .grid{display:grid; grid-template-columns: 320px 1fr; gap:16px}
+  @media (max-width: 980px){ .grid{grid-template-columns: 1fr} }
+  .sidebar{background:var(--panel); border:1px solid rgba(255,255,255,.07); border-radius:var(--radius); padding:12px; box-shadow:var(--shadow)}
+  .unit{display:flex; gap:10px; align-items:center; padding:10px; border-radius:12px; cursor:pointer; border:1px solid rgba(255,255,255,.06)}
+  .unit:hover{background:rgba(255,255,255,.04)}
+  .unit.active{outline:2px solid var(--accent); background:rgba(110,168,255,.07)}
+  .unit small{color:var(--muted)}
+  .badge{margin-left:auto; font-size:12px; color:#0d1222; background:var(--yellow); padding:2px 8px; border-radius:99px}
+  .card{background:var(--panel); border:1px solid rgba(255,255,255,.07); border-radius:var(--radius); box-shadow:var(--shadow)}
+  .card h2{margin:0 0 8px; font-size:20px}
+  .card .head{padding:16px; border-bottom:1px dashed rgba(255,255,255,.08)}
+  .card .body{padding:16px; display:grid; gap:16px}
+  .flex{display:flex; gap:16px; flex-wrap:wrap}
+  .pane{flex:1 1 360px; background:var(--panel-2); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px}
+  .pane h3{margin:2px 0 10px; font-size:16px}
+  .pane p{margin:6px 0; color:var(--muted); font-size:14px}
+  canvas{display:block; width:100%; height:260px; background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border-radius:10px; border:1px solid rgba(255,255,255,.08)}
+  #graph1, #graph2{height:200px}
+  .controls{display:grid; grid-template-columns: 1fr 120px; gap:10px; align-items:center}
+  .controls label{font-size:14px; color:var(--muted)}
+  .controls input[type=range]{width:100%}
+  .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#0a1b38; border:1px solid rgba(255,255,255,.12); padding:2px 6px; border-radius:6px}
+  .btn{appearance:none; border:none; padding:10px 14px; border-radius:12px; background:linear-gradient(180deg, #2a5de0, #1747c7); color:white; cursor:pointer; box-shadow:var(--shadow); font-weight:600}
+  .btn:active{transform:translateY(1px)}
+  .btn.alt{background:linear-gradient(180deg, #23b47e, #159466)}
+  .btn.ghost{background:transparent; border:1px solid rgba(255,255,255,.2)}
+  .hint{font-size:12px; color:var(--muted)}
+  .quiz{display:grid; gap:8px}
+  .quiz .q{font-weight:600}
+  .choice{display:flex; gap:8px; align-items:center; padding:10px; border:1px solid rgba(255,255,255,.1); border-radius:10px; cursor:pointer}
+  .choice:hover{background:rgba(255,255,255,.04)}
+  .choice.correct{outline:2px solid var(--good)}
+  .choice.wrong{outline:2px solid var(--bad)}
+  .result{font-weight:700}
+  footer{color:var(--muted); font-size:12px; padding:12px 16px; text-align:center; border-top:1px solid rgba(255,255,255,.08)}
+  .pill{display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.06); padding:6px 10px; border-radius:999px; font-size:12px; border:1px solid rgba(255,255,255,.08)}
+  .tog{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted)}
+
+  /* ===== Инфографика во 2-м уроке ===== */
+  .infobox{position:relative; overflow:hidden; border:1px dashed rgba(255,255,255,.15); border-radius:12px; padding:12px; background:rgba(255,255,255,.03)}
+  .steps{display:grid; grid-template-columns: repeat(4, 1fr); gap:12px}
+  .step{border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:10px; min-height:110px; display:grid; grid-template-rows:auto 1fr auto; background:rgba(255,255,255,.02)}
+  .step h4{margin:0 0 6px; font-size:14px}
+  .step p{margin:4px 0 0; font-size:13px; color:var(--muted)}
+  .ico{width:32px; height:32px; border-radius:8px; display:grid; place-items:center; font-weight:700}
+  .ico.blue{background:#193c7a} .ico.red{background:#5a1a2a} .ico.green{background:#165d4a} .ico.yellow{background:#6a5e19}
+  .pulse{animation:pulse 1.6s ease-in-out infinite; opacity:.9}
+  @keyframes pulse{ 0%{transform:scale(1)} 50%{transform:scale(1.08)} 100%{transform:scale(1)} }
+
+  .timeline{position:absolute; left:12px; right:12px; bottom:6px; height:3px; background:rgba(255,255,255,.12); border-radius:4px; overflow:hidden}
+  .timeline .bar{height:100%; width:0%; background:linear-gradient(90deg, #6ea8ff, #20c997, #ffd166)}
+  .infobox.playing .timeline .bar{animation: fillbar 4.5s linear forwards}
+  @keyframes fillbar{ from{width:0%} to{width:100%} }
+
+  .step{opacity:.25; filter:saturate(.6)}
+  .infobox.playing .step{opacity:1; filter:saturate(1)}
+  .infobox.playing .step:nth-child(1){animation: appear .6s .1s both}
+  .infobox.playing .step:nth-child(2){animation: appear .6s 1.3s both}
+  .infobox.playing .step:nth-child(3){animation: appear .6s 2.5s both}
+  .infobox.playing .step:nth-child(4){animation: appear .6s 3.7s both}
+  @keyframes appear{ from{opacity:.25; transform:translateY(6px)} to{opacity:1; transform:none} }
+
+  .drawline{stroke-dasharray:120; stroke-dashoffset:120}
+  .infobox.playing .drawline{animation: draw 1.2s ease forwards}
+  @keyframes draw{ to{stroke-dashoffset:0} }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="title">
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>Интерактивный курс по физике — v5</h1>
+        <div class="subtitle">Два урока + встроенная инфографика во 2‑м уроке</div>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:8px; align-items:center">
+        <span class="pill">Прогресс: <b id="progress">0%</b></span>
+        <button class="btn ghost" id="reset">Сбросить прогресс</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="grid">
+    <aside class="sidebar" id="sidebar">
+      <div class="unit active" data-target="lesson1" tabindex="0" role="button">
+        <div style="width:32px; height:32px; background:#2540a6; border-radius:10px; display:grid; place-items:center">1</div>
+        <div>
+          <div><b>Урок 1.</b> Аркада движения</div>
+          <small>Спринт / Торможение / Разгон</small>
+        </div>
+        <span class="badge">обновлён</span>
+      </div>
+      <div class="unit" data-target="lesson2" tabindex="0" role="button">
+        <div style="width:32px; height:32px; background:#265e5a; border-radius:10px; display:grid; place-items:center">2</div>
+        <div>
+          <div><b>Урок 2.</b> Силы и трение</div>
+          <small>2‑й закон Ньютона</small>
+        </div>
+      </div>
+    </aside>
+
+    <section id="content">
+      <article class="card" id="lesson1">
+        <div class="head"><h2>Урок 1. Аркада: скорость, ускорение и бонусы</h2><div class="hint">x = x₀ + v₀·t + ½·(a+a★)·t²; v(t)=v₀ + (a+a★)·t</div></div>
+        <div class="body">
+          <div class="flex">
+            <div class="pane">
+              <h3>Симуляция</h3>
+              <canvas id="sim1" width="1000" height="260"></canvas>
+              <div class="controls" style="margin-top:10px">
+                <label>Режим миссии
+                  <select id="mode1"><option value="sprint" selected>Спринт</option><option value="brake">Торможение</option><option value="accel">Разгон</option></select>
+                </label><div class="kbd" id="mode1v">sprint</div>
+              </div>
+              <div class="controls">
+                <label>Цвет машины
+                  <select id="carColor"><option value="#5fa8ff" selected>Синяя</option><option value="#ff6b6b">Красная</option><option value="#20c997">Зелёная</option><option value="#b36bff">Фиолетовая</option></select>
+                </label><div class="kbd" id="carColorV">#5fa8ff</div>
+              </div>
+              <div class="controls"><label>Начальная скорость v₀ (м/с)<input id="v0" type="range" min="-12" max="12" step="0.5" value="4" /></label><div class="kbd" id="v0v">4</div></div>
+              <div class="controls"><label>Ускорение a (м/с²)<input id="acc" type="range" min="-6" max="6" step="0.25" value="0.5" /></label><div class="kbd" id="accv">0.5</div></div>
+              <div class="controls"><label>Масса m (кг)<input id="mass1" type="range" min="1" max="15" step="1" value="3" /></label><div class="kbd" id="mass1v">3</div></div>
+              <div class="controls"><label>Длительность t (с)<input id="time" type="range" min="2" max="20" step="0.5" value="8" /></label><div class="kbd" id="timev">8</div></div>
+              <div class="tog"><label><input type="checkbox" id="pauseOnDrag" checked /> Пауза при перетаскивании</label><label><input type="checkbox" id="autoStart1" /> Автозапуск после изменений</label></div>
+              <div class="pane" style="background:rgba(255,255,255,.03); border-style:dashed; margin-top:8px">
+                <h3 style="margin-top:0">🎯 Миссия и бонусы</h3>
+                <div class="controls"><label>Цель XₜARGET (м)<input id="goalX" type="range" min="10" max="140" step="1" value="50" /></label><div class="kbd" id="goalXv">50</div></div>
+                <div class="controls"><label>Лимит времени (с)<input id="goalT" type="range" min="2" max="20" step="0.5" value="6" /></label><div class="kbd" id="goalTv">6</div></div>
+                <div class="controls"><label>Кол-во бонусов ⭐<input id="bonusN" type="range" min="0" max="6" step="1" value="3" /></label><div class="kbd" id="bonusNv">3</div></div>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+                  <button class="btn" id="play1">▶ Запустить</button>
+                  <button class="btn ghost" id="pause1">⏸ Пауза</button>
+                  <button class="btn ghost" id="reset1">⟲ Сброс</button>
+                  <button class="btn alt" id="randomMission">🎲 Случайная миссия</button>
+                  <button class="btn ghost" id="clearScores">🧹 Очистить рекорды</button>
+                </div>
+                <p class="hint" id="s1readout">x(t)=…; v(t)=…; Eₖ=…; ⭐=0</p>
+                <div class="result" id="missionResult" aria-live="polite"></div>
+              </div>
+            </div>
+            <div class="pane">
+              <h3>Разбор и табло</h3>
+              <canvas id="graph1" width="1000" height="200"></canvas>
+              <div style="margin-top:10px">
+                <table style="width:100%; border-collapse:separate; border-spacing:0 6px" id="scoreTable"><thead><tr style="color:var(--muted); font-size:12px"><th style="text-align:left">#</th><th style="text-align:left">Время</th><th style="text-align:left">Режим</th><th style="text-align:left">Дистанция</th><th style="text-align:left">⭐</th><th style="text-align:left">Цвет</th></tr></thead><tbody></tbody></table>
+              </div>
+            </div>
+          </div>
+          <div class="pane">
+            <h3>Мини‑квиз</h3>
+            <div class="quiz" data-quiz="q1">
+              <div class="q">В «Торможении» при a &lt; 0 и v₀ &gt; 0, что с v(t) и Eₖ(t)?</div>
+              <label class="choice" data-correct="true"><input type="radio" name="q1"/> v(t) убывает линейно; Eₖ падает быстрее (квадратично по v)</label>
+              <label class="choice" data-correct="false"><input type="radio" name="q1"/> v(t) растёт, Eₖ постоянна</label>
+              <label class="choice" data-correct="false"><input type="radio" name="q1"/> Оба графика горизонтальны</label>
+              <button class="btn alt" data-check>Проверить</button>
+              <div class="result" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card" id="lesson2" style="display:none">
+        <div class="head"><h2>Урок 2. Силы, масса и трение — 2‑й закон Ньютона</h2></div>
+        <div class="body">
+          <div class="flex">
+            <div class="pane">
+              <h3>Брусок на столе</h3>
+              <canvas id="sim2" width="900" height="240" aria-label="Симуляция бруска с трением"></canvas>
+              <div class="controls" style="margin-top:10px">
+                <label>Масса m (кг)<input id="m2" type="range" min="1" max="10" step="1" value="3" /></label><div class="kbd" id="m2v">3</div>
+              </div>
+              <div class="controls"><label>Тяга F (Н)<input id="f2" type="range" min="0" max="50" step="1" value="15" /></label><div class="kbd" id="f2v">15</div></div>
+              <div class="controls"><label>Коэффициент трения μ<input id="mu2" type="range" min="0" max="0.8" step="0.02" value="0.2" /></label><div class="kbd" id="mu2v">0.20</div></div>
+              <div style="display:flex; gap:8px; align-items:center; margin-top:6px">
+                <button class="btn" id="play2">▶ Запустить</button>
+                <button class="btn ghost" id="pause2">⏸ Пауза</button>
+                <button class="btn ghost" id="reset2">⟲ Сброс</button>
+              </div>
+              <p class="hint" id="s2readout">Fт = … Н, a = … м/с²</p>
+
+              <!-- Инфографика -->
+              <div id="info2" class="infobox" aria-live="polite">
+                <div class="steps">
+                  <div class="step"><div class="ico blue">1</div><h4>Считаем трение</h4>
+                    <svg viewBox="0 0 120 30" width="100%" height="36" aria-hidden="true"><line x1="5" y1="20" x2="115" y2="20" stroke="#6ea8ff" stroke-width="3" class="drawline"/><text x="8" y="15" fill="#9fb3ff" font-size="10">Fₜ = μ·m·g</text></svg>
+                    <p>Если μ, m или g ↑, то трение ↑.</p>
+                  </div>
+                  <div class="step"><div class="ico red">2</div><h4>Сравниваем силы</h4>
+                    <svg viewBox="0 0 120 30" width="100%" height="36"><polygon points="10,15 28,15 28,10 40,20 28,30 28,25 10,25" fill="#5fa8ff"/><polygon points="110,15 92,15 92,10 80,20 92,30 92,25 110,25" fill="#ff6b6b"/></svg>
+                    <p><b>F ⩽ Fₜ</b> → стоит, <b>F &gt; Fₜ</b> → поедет.</p>
+                  </div>
+                  <div class="step"><div class="ico green">3</div><h4>Ускорение</h4>
+                    <svg viewBox="0 0 120 30" width="100%" height="36"><polyline points="10,25 40,24 70,20 110,10" fill="none" stroke="#20c997" stroke-width="3" class="drawline"/></svg>
+                    <p>a = (F − Fₜ)/m (если F &gt; Fₜ).</p>
+                  </div>
+                  <div class="step"><div class="ico yellow">4</div><h4>Скорость v(t)</h4>
+                    <svg viewBox="0 0 120 30" width="100%" height="36"><polyline points="10,25 110,8" fill="none" stroke="#ffd166" stroke-width="3" class="drawline"/></svg>
+                    <p>Наклон графика равен a.</p>
+                  </div>
+                </div>
+                <div class="timeline"><div class="bar"></div></div>
+              </div>
+            </div>
+
+            <div class="pane">
+              <h3>Векторы сил и график v(t)</h3>
+              <canvas id="graph2" width="900" height="200"></canvas>
+            </div>
+          </div>
+
+          <div class="pane">
+            <h3>Мини‑квиз</h3>
+            <div class="quiz" data-quiz="q2">
+              <div class="q">При m=2 кг, μ=0.3, g≈9.8 м/с², чему ≈ Fₜ?</div>
+              <label class="choice" data-correct="false"><input type="radio" name="q2"/> ≈ 2.9 Н</label>
+              <label class="choice" data-correct="true"><input type="radio" name="q2"/> ≈ 5.9 Н</label>
+              <label class="choice" data-correct="false"><input type="radio" name="q2"/> ≈ 9.8 Н</label>
+              <button class="btn alt" data-check>Проверить</button>
+              <div class="result" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+</main>
+
+<footer>© 2025 • Версия v5: встроенная инфографика в уроке 2, автономный HTML.</footer>
+
+<script>
+const Progress={ key:'physics_demo_progress_v5', get(){ try{return JSON.parse(localStorage.getItem(this.key)||'{}')}catch{return{}} }, set(d){ localStorage.setItem(this.key, JSON.stringify(d)) }, update(part,done=true){ const p=this.get(); p[part]=done; this.set(p); renderProgress() } };
+function renderProgress(){ const p=Progress.get(); const total=4; const done=['l1sim','l1quiz','l2sim','l2quiz'].filter(k=>p[k]).length; document.getElementById('progress').textContent=Math.round(done/total*100)+'%'}
+renderProgress();
+document.getElementById('reset').addEventListener('click',()=>{ localStorage.removeItem(Progress.key); renderProgress(); alert('Прогресс сброшен') })
+
+const sidebar=document.getElementById('sidebar'); const content=document.getElementById('content');
+sidebar.addEventListener('click',(e)=>{ const unit=e.target.closest('.unit'); if(!unit) return; [...sidebar.querySelectorAll('.unit')].forEach(u=>u.classList.remove('active')); unit.classList.add('active'); const id=unit.dataset.target; [...content.children].forEach(sec=>sec.style.display=(sec.id===id)?'block':'none'); });
+
+// ===== Урок 1
+const sim1=document.getElementById('sim1'); const g1=sim1.getContext('2d');
+let mode1='sprint'; let v0=+document.getElementById('v0').value; let a1=+document.getElementById('acc').value; let mass1=+document.getElementById('mass1').value; let T1=+document.getElementById('time').value; let goalX=+document.getElementById('goalX').value; let goalT=+document.getElementById('goalT').value; let bonusN=+document.getElementById('bonusN').value; let carColor=document.getElementById('carColor').value;
+let t1=0, playing1=false, abonus=0, bonuses=[];
+let clouds=[]; function initClouds(){ const W=sim1.width,H=sim1.height; clouds=Array.from({length:8},()=>({x:Math.random()*W,y:20+Math.random()*120,w:60+Math.random()*140,h:20+Math.random()*20,s:0.5+Math.random()*1.2})) } initClouds();
+function drawSky(v){ const W=sim1.width,H=sim1.height; g1.clearRect(0,0,W,H); const lg=g1.createLinearGradient(0,0,0,H); lg.addColorStop(0,'#0b1e3e'); lg.addColorStop(1,'#0f274f'); g1.fillStyle=lg; g1.fillRect(0,0,W,H); g1.fillStyle='rgba(255,255,255,.12)'; for(const c of clouds){ c.x-=(c.s+v*0.1); if(c.x<-c.w) c.x=W+Math.random()*100; g1.beginPath(); g1.ellipse(c.x,c.y,c.w,c.h,0,0,Math.PI*2); g1.fill(); } g1.fillStyle='rgba(255,255,255,.08)'; g1.fillRect(0,H-40,W,2); for(let i=0;i<=10;i++){ const x=i/10*W; g1.fillRect(x,H-40,2,8) } }
+function drawCar(xpx,v){ const H=sim1.height,y=H-72; g1.save(); g1.translate(xpx,y); g1.fillStyle='rgba(0,0,0,.35)'; g1.beginPath(); g1.ellipse(36,54,38,10,0,0,Math.PI*2); g1.fill(); const grd=g1.createLinearGradient(0,0,0,44); grd.addColorStop(0,carColor); grd.addColorStop(1,'#1e2a6f'); g1.fillStyle=grd; g1.strokeStyle='rgba(255,255,255,.35)'; g1.lineWidth=2; g1.beginPath(); g1.roundRect(0,0,72,44,10); g1.fill(); g1.stroke(); g1.fillStyle='#10182f'; g1.beginPath(); g1.arc(18,44,10,0,Math.PI*2); g1.arc(54,44,10,0,Math.PI*2); g1.fill(); const col=v>=0?'#5fa8ff':'#ff6b9e'; g1.strokeStyle=col; g1.lineWidth=3; g1.beginPath(); g1.moveTo(36,22); g1.lineTo(36+Math.max(-50,Math.min(50,v*6)),22); g1.stroke(); g1.restore(); }
+function drawBonuses(scale){ g1.fillStyle='rgba(255,214,102,0.9)'; for(const b of bonuses){ if(b.taken) continue; const px=Math.min(sim1.width-20,b.pos*scale); g1.beginPath(); for(let i=0;i<5;i++){ const ang=(i*2*Math.PI)/5; const x=px+Math.cos(ang)*8, y=sim1.height-80+Math.sin(ang)*8; const x2=px+Math.cos(ang+Math.PI/5)*3, y2=sim1.height-80+Math.sin(ang+Math.PI/5)*3; if(i===0) g1.moveTo(x,y); g1.lineTo(x2,y2) } g1.closePath(); g1.fill(); } }
+function x_t(t){ return v0*t + 0.5*(a1+abonus)*t*t } function v_t(t){ return v0 + (a1+abonus)*t } function Ek(v){ return 0.5*mass1*v*v }
+function generateBonuses(){ bonuses=Array.from({length:bonusN},()=>({pos:Math.round(10+Math.random()*(Math.max(10,goalX-10))),taken:false})) }
+function renderSim1(){ const v=v_t(t1); drawSky(v); const W=sim1.width; const maxX=Math.abs(v0)*T1 + Math.abs(a1+abonus)*T1*T1/2 + 10; const scale=(W-100)/Math.max(10,maxX); const x=Math.max(0,x_t(t1)); const xpx=Math.min(W-80,x*scale); const gx=Math.min(W-20,goalX*scale); g1.fillStyle='rgba(255,255,255,.15)'; g1.fillRect(gx,20,3,sim1.height-80); g1.fillStyle='rgba(255,255,255,.4)'; g1.fillRect(gx-6,20,12,6); drawBonuses(scale); drawCar(xpx,v); for(const b of bonuses){ if(!b.taken && x>=b.pos){ b.taken=true; abonus+=1.2; }} abonus*=0.985; const read=`x=${x.toFixed(2)} м, v=${v.toFixed(2)} м/с, Eₖ≈${Ek(v).toFixed(2)} Дж, ⭐=${bonuses.filter(b=>b.taken).length}`; document.getElementById('s1readout').textContent=read; drawGraph1(); }
+function burstConfetti(){ const W=sim1.width,H=sim1.height; const N=40; const parts=[]; for(let i=0;i<N;i++){ parts.push({x:Math.random()*W,y:40,vx:(Math.random()-0.5)*3,vy:Math.random()*2+1,g:0.05,life:70}) } function step(){ drawSky(0); for(const p of parts){ p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.life--; g1.fillStyle='rgba(255,255,255,.8)'; g1.fillRect(p.x,p.y,2,2) } if(parts.some(p=>p.life>0)) requestAnimationFrame(step) } requestAnimationFrame(step) }
+let raf1; function tick1(){ if(!playing1){ cancelAnimationFrame(raf1); return } t1+=1/60; if(t1>T1){ finishMission(false); return } const reached=x_t(t1)>=goalX && t1<=goalT; renderSim1(); if(reached){ finishMission(true); return } raf1=requestAnimationFrame(tick1) }
+function reset1(){ t1=0; playing1=false; abonus=0; document.getElementById('missionResult').textContent=''; renderSim1() }
+function finishMission(win){ playing1=false; const el=document.getElementById('missionResult'); if(win){ el.textContent=`✅ Успех! t=${t1.toFixed(2)} с • ⭐=${bonuses.filter(b=>b.taken).length}`; el.style.color='var(--good)'; Progress.update('l1sim',true); saveRecord(); burstConfetti() } else { el.textContent=`⏹ Не успели. Цель: X=${goalX} м за t≤${goalT} с.`; el.style.color='var(--bad)' } }
+const SCORE_KEY='physics_l1_scores_v5'; function loadScores(){ try{return JSON.parse(localStorage.getItem(SCORE_KEY)||'[]')}catch{return[]} } function saveScores(arr){ localStorage.setItem(SCORE_KEY, JSON.stringify(arr)) } function saveRecord(){ const rec={time:t1,mode:mode1,dist:goalX,stars:bonuses.filter(b=>b.taken).length,color:carColor,ts:Date.now()}; const arr=loadScores().concat(rec).sort((a,b)=>a.time-b.time).slice(0,10); saveScores(arr); renderScores() } function renderScores(){ const arr=loadScores(); const tbody=document.querySelector('#scoreTable tbody'); if(!tbody) return; tbody.innerHTML=''; arr.forEach((r,i)=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${i+1}</td><td>${r.time.toFixed(2)} с</td><td>${r.mode}</td><td>${r.dist} м</td><td>${r.stars}</td><td><span class="pill" style="background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08);"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${r.color}"></span></span></td>`; tbody.appendChild(tr) }) } renderScores();
+document.getElementById('clearScores').addEventListener('click',()=>{ localStorage.removeItem(SCORE_KEY); renderScores() })
+const gcv1=document.getElementById('graph1'); const gg1=gcv1.getContext('2d'); function drawGraph1(){ const W=gcv1.width,H=gcv1.height; gg1.clearRect(0,0,W,H); gg1.strokeStyle='rgba(255,255,255,.12)'; gg1.beginPath(); for(let i=1;i<6;i++){ gg1.moveTo(0,i*H/6); gg1.lineTo(W,i*H/6) } gg1.stroke(); gg1.strokeStyle='rgba(255,255,255,.35)'; gg1.beginPath(); gg1.moveTo(40,H-30); gg1.lineTo(W-10,H-30); gg1.moveTo(40,H-30); gg1.lineTo(40,10); gg1.stroke(); const N=120,T=T1; gg1.strokeStyle='#5fa8ff'; gg1.beginPath(); for(let i=0;i<=N;i++){ const t=i/N*T; const x=v0*t + 0.5*(a1+abonus)*t*t; const px=40+(W-60)*(t/T); const py=(H-40) - (x/(Math.abs(v0)*T + Math.abs(a1+abonus)*T*T/2 + 1))*(H-60); if(i===0) gg1.moveTo(px,py); else gg1.lineTo(px,py) } gg1.stroke(); gg1.strokeStyle='#20c997'; gg1.beginPath(); for(let i=0;i<=N;i++){ const t=i/N*T; const v=v0+(a1+abonus)*t; const px=40+(W-60)*(t/T); const py=(H-40) - ((v+10)/(Math.max(10, Math.abs(v0)+(Math.abs(a1+abonus))*T + 10)))*(H-60); if(i===0) gg1.moveTo(px,py); else gg1.lineTo(px,py) } gg1.stroke(); gg1.strokeStyle='#ffd166'; gg1.beginPath(); for(let i=0;i<=N;i++){ const t=i/N*T; const v=v0+(a1+abonus)*t; const E=0.5*mass1*v*v; const px=40+(W-60)*(t/T); const py=(H-40) - (E/(E+20))*(H-60); if(i===0) gg1.moveTo(px,py); else gg1.lineTo(px,py) } gg1.stroke() }
+function presetsByMode(){ if(mode1==='sprint') return {v0:4,a:0.6,gx:50,gt:6}; if(mode1==='brake') return {v0:8,a:-1.5,gx:35,gt:5}; return {v0:1,a:1.2,gx:60,gt:8} }
+function applyModePreset(){ const p=presetsByMode(); document.getElementById('v0').value=p.v0; v0=p.v0; document.getElementById('acc').value=p.a; a1=p.a; document.getElementById('goalX').value=p.gx; goalX=p.gx; document.getElementById('goalT').value=p.gt; goalT=p.gt; updLabels1(); renderSim1(); }
+function updLabels1(){ document.getElementById('mode1v').textContent=mode1; document.getElementById('carColorV').textContent=carColor; document.getElementById('v0v').textContent=v0; document.getElementById('accv').textContent=a1; document.getElementById('mass1v').textContent=mass1; document.getElementById('timev').textContent=T1; document.getElementById('goalXv').textContent=goalX; document.getElementById('goalTv').textContent=goalT; document.getElementById('bonusNv').textContent=bonusN }
+updLabels1();
+document.getElementById('mode1').addEventListener('change',()=>{ mode1=document.getElementById('mode1').value; applyModePreset() })
+document.getElementById('carColor').addEventListener('change',()=>{ carColor=document.getElementById('carColor').value; updLabels1(); renderSim1() })
+let dragPause=false, wasPlaying=false;
+function attachDragPause(el){ el.addEventListener('pointerdown',()=>{ wasPlaying=playing1; playing1=false; dragPause=true; }); function end(){ if(!dragPause) return; dragPause=false; if(wasPlaying){ playing1=true; raf1=requestAnimationFrame(tick1) } } el.addEventListener('pointerup',end); el.addEventListener('pointercancel',end); el.addEventListener('pointerleave',end); }
+for(const id of ['v0','acc','time','mass1','goalX','goalT','bonusN']){ const el=document.getElementById(id); attachDragPause(el); el.addEventListener('input',()=>{ v0=+document.getElementById('v0').value; a1=+document.getElementById('acc').value; T1=+document.getElementById('time').value; mass1=+document.getElementById('mass1').value; goalX=+document.getElementById('goalX').value; goalT=+document.getElementById('goalT').value; bonusN=+document.getElementById('bonusN').value; updLabels1(); renderSim1(); }); }
+function startMission(){ t1=0; abonus=0; generateBonuses(); playing1=true; document.getElementById('missionResult').textContent=''; cancelAnimationFrame(raf1); raf1=requestAnimationFrame(tick1) }
+document.getElementById('play1').addEventListener('click',()=>{ if(!playing1) startMission() })
+document.getElementById('pause1').addEventListener('click',()=> playing1=false)
+document.getElementById('reset1').addEventListener('click', reset1)
+const rand=(a,b)=> a + Math.random()*(b-a); document.getElementById('randomMission').addEventListener('click',()=>{ if(mode1==='sprint'){ v0=Math.round(rand(3,7)*2)/2; a1=Math.round(rand(0.3,1.2)*4)/4; goalX=Math.round(rand(40,90)); goalT=Math.round(rand(5,9)*2)/2 } else if(mode1==='brake'){ v0=Math.round(rand(7,10)*2)/2; a1=-Math.round(rand(1.0,2.0)*4)/4; goalX=Math.round(rand(25,45)); goalT=Math.round(rand(4,7)*2)/2 } else { v0=Math.round(rand(0.5,2.0)*2)/2; a1=Math.round(rand(0.8,1.8)*4)/4; goalX=Math.round(rand(50,110)); goalT=Math.round(rand(6,12)*2)/2 } document.getElementById('v0').value=v0; document.getElementById('acc').value=a1; document.getElementById('goalX').value=goalX; document.getElementById('goalT').value=goalT; updLabels1(); renderSim1(); })
+document.addEventListener('keydown',(e)=>{ if(e.code==='Space'){ e.preventDefault(); playing1=!playing1; if(playing1) startMission() } })
+generateBonuses(); renderSim1();
+
+function initQuiz(name, idx){ const root=document.querySelector(`.quiz[data-quiz="${name}"]`); if(!root) return; const result=root.querySelector('.result'); root.querySelector('[data-check]').addEventListener('click',()=>{ const choice=root.querySelector('input[type=radio]:checked'); if(!choice){ result.textContent='Выберите ответ'; result.style.color='var(--yellow)'; return } const label=choice.closest('.choice'); const ok=label.dataset.correct==='true'; [...root.querySelectorAll('.choice')].forEach(c=>c.classList.remove('correct','wrong')); label.classList.add(ok?'correct':'wrong'); result.textContent= ok? 'Верно! 🎉' : 'Неверно. Попробуйте ещё раз.'; result.style.color = ok? 'var(--good)' : 'var(--bad)'; if(ok) Progress.update(idx===1?'l1quiz':'l2quiz',true) }) }
+initQuiz('q1',1);
+
+// ===== Урок 2
+const sim2=document.getElementById('sim2'); if(sim2){
+const g2=sim2.getContext('2d'); let m2=+document.getElementById('m2').value, F2=+document.getElementById('f2').value, mu2=+document.getElementById('mu2').value; let t2=0,v2=0,x2=0,playing2=false; const g=9.8;
+function updLabels2(){ document.getElementById('m2v').textContent=m2; document.getElementById('f2v').textContent=F2; document.getElementById('mu2v').textContent=mu2.toFixed(2) } updLabels2();
+function drawScene2(){ const W=sim2.width,H=sim2.height; g2.clearRect(0,0,W,H); g2.fillStyle='rgba(255,255,255,.08)'; g2.fillRect(0,H-40,W,3); const bx=40+x2*10, by=H-92; g2.fillStyle='rgba(0,0,0,.35)'; g2.beginPath(); g2.ellipse(bx+50,H-50,50,10,0,0,Math.PI*2); g2.fill(); const grd=g2.createLinearGradient(0,by,0,by+60); grd.addColorStop(0,'#23b47e'); grd.addColorStop(1,'#15785a'); g2.fillStyle=grd; g2.strokeStyle='rgba(255,255,255,.35)'; g2.lineWidth=2; g2.beginPath(); g2.roundRect(bx,by,100,60,12); g2.fill(); g2.stroke(); const Ft=mu2*m2*g; const ax=(F2>Ft)?(F2-Ft)/m2:0; drawArrow(g2,bx+100,by+30,bx+100+F2*1.2,by+30,'#5fa8ff'); drawArrow(g2,bx,by+30,bx-Ft*1.2,by+30,'#ff6b6b'); drawArrow(g2,bx+50,by+60,bx+50,by+60+m2*g*0.8,'#ffd166'); drawArrow(g2,bx+50,by,bx+50,by-m2*g*0.8,'#c6ffdd'); document.getElementById('s2readout').textContent=`Fₜ = μ·m·g = ${mu2.toFixed(2)}·${m2}·9.8 ≈ ${(Ft).toFixed(1)} Н,  a = ${(ax).toFixed(2)} м/с²` }
+function drawArrow(ctx,x1,y1,x2,y2,color){ ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); const ang=Math.atan2(y2-y1,x2-x1); const L=10; ctx.beginPath(); ctx.moveTo(x2,y2); ctx.lineTo(x2 - L*Math.cos(ang-0.5), y2 - L*Math.sin(ang-0.5)); ctx.lineTo(x2 - L*Math.cos(ang+0.5), y2 - L*Math.sin(ang+0.5)); ctx.closePath(); ctx.fill() }
+let raf2; function tick2(){ if(!playing2){ cancelAnimationFrame(raf2); return } const Ft=mu2*m2*g; const ax=(F2>Ft)?(F2-Ft)/m2:0; v2+=ax*(1/60); x2+=v2*(1/60); t2+=1/60; drawScene2(); drawGraph2(); if(t2>8){ playing2=false; Progress.update('l2sim',true) } raf2=requestAnimationFrame(tick2) }
+const gc2=document.getElementById('graph2'); const g21=gc2.getContext('2d'); function drawGraph2(){ const W=gc2.width,H=gc2.height; g21.clearRect(0,0,W,H); g21.strokeStyle='rgba(255,255,255,.12)'; g21.beginPath(); for(let i=1;i<6;i++){ g21.moveTo(0,i*H/6); g21.lineTo(W,i*H/6) } g21.stroke(); g21.strokeStyle='rgba(255,255,255,.35)'; g21.beginPath(); g21.moveTo(40,H-30); g21.lineTo(W-10,H-30); g21.moveTo(40,H-30); g21.lineTo(40,10); g21.stroke(); g21.strokeStyle='#5fa8ff'; g21.beginPath(); const T=8,N=120; let v=0; for(let i=0;i<=N;i++){ const t=i/N*T; const Ft=mu2*m2*g; const a=(F2>Ft)?(F2-Ft)/m2:0; v=a*t; const px=40+(W-60)*(t/T); const py=(H-40) - ((v+5)/(Math.max(5,Math.abs(v)+5)))*(H-60); if(i===0) g21.moveTo(px,py); else g21.lineTo(px,py) } g21.stroke() }
+function reset2(){ t2=0; v2=0; x2=0; playing2=false; drawScene2(); drawGraph2(); setInfo(false) }
+for(const [id,setter] of [['m2',v=>m2=v],['f2',v=>F2=v],['mu2',v=>mu2=v]]){ const el=document.getElementById(id); el.addEventListener('input',()=>{ setter(+el.value); document.getElementById(id+'v').textContent = (id==='mu2'? (+el.value).toFixed(2) : +el.value); drawScene2(); drawGraph2() }) }
+document.getElementById('play2').addEventListener('click',()=>{ if(!playing2){ playing2=true; raf2=requestAnimationFrame(tick2); setInfo(true) } })
+document.getElementById('pause2').addEventListener('click',()=>{ playing2=false; })
+document.getElementById('reset2').addEventListener('click', reset2)
+drawScene2(); drawGraph2();
+
+function setInfo(on){ const box=document.getElementById('info2'); if(!box) return; box.classList.remove('playing'); void box.offsetWidth; if(on){ box.classList.add('playing'); } }
+}
+
+function initQuiz(name, idx){ const root=document.querySelector(`.quiz[data-quiz="${name}"]`); if(!root) return; const result=root.querySelector('.result'); root.querySelector('[data-check]').addEventListener('click',()=>{ const choice=root.querySelector('input[type=radio]:checked'); if(!choice){ result.textContent='Выберите ответ'; result.style.color='var(--yellow)'; return } const label=choice.closest('.choice'); const ok=label.dataset.correct==='true'; [...root.querySelectorAll('.choice')].forEach(c=>c.classList.remove('correct','wrong')); label.classList.add(ok?'correct':'wrong'); result.textContent= ok? 'Верно! 🎉' : 'Неверно. Попробуйте ещё раз.'; result.style.color = ok? 'var(--good)' : 'var(--bad)'; if(ok) Progress.update(idx===1?'l1quiz':'l2quiz',true) }) }
+initQuiz('q1',1); initQuiz('q2',2);
+
+if(!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){const rr=Array.isArray(r)?r:[r,r,r,r];this.beginPath();this.moveTo(x+rr[0],y);this.lineTo(x+w-rr[1],y);this.quadraticCurveTo(x+w,y,x+w,y+rr[1]);this.lineTo(x+w,y+h-rr[2]);this.quadraticCurveTo(x+w,y+h,x+w-rr[2],y+h);this.lineTo(x+rr[3],y+h);this.quadraticCurveTo(x,y+h,x,y+h-rr[3]);this.lineTo(x,y+rr[0]);this.quadraticCurveTo(x,y,x+rr[0],y);return this};}
+</script>
+</body>
+</html>

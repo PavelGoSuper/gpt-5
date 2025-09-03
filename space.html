@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>🚀 Космодром — Live HUD при перетаскивании</title>
+<style>
+  :root{ --bg:#060a13; --panel:#0e1424cc; --ink:#e9f2ff; --muted:#9fb4d6; --accent:#2dd4bf; --border:#1b2742; --bar:#2dd4bf; --barbg:#0f1b2f;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,Arial}
+  canvas{display:block;width:100vw;height:100vh}
+  #hud{position:fixed;left:12px;top:12px;background:var(--panel);padding:12px 14px;border-radius:12px;border:1px solid var(--border);backdrop-filter:blur(6px);max-width:780px;z-index:2}
+  #hud b{color:var(--accent)}
+  .grid{display:grid;grid-template-columns:240px 1fr 96px;gap:10px 12px;align-items:center;margin-top:8px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr;}.grid .row>*{margin:2px 0}}
+  #hud label{opacity:.95}
+  #hud input[type=range]{width:100%}
+  .val{text-align:right;opacity:.95;font-variant-numeric:tabular-nums}
+  .row{display:contents}
+  input[type=range]{width:100%}
+  .key{padding:2px 6px;border:1px solid var(--border);border-radius:6px;background:#0b1220;color:#cfe3ff;margin-right:4px}
+  #radarWrap{position:fixed;right:12px;bottom:12px;background:var(--panel);padding:8px;border-radius:12px;border:1px solid var(--border);z-index:2}
+  #radar{display:block;width:180px;height:180px}
+  #legend{position:fixed;left:12px;bottom:12px;background:var(--panel);padding:8px 10px;border-radius:10px;border:1px solid var(--border);color:#cfe3ff;z-index:2}
+  .section{margin-top:12px;padding-top:8px;border-top:1px dashed #203154}
+  #err{position:fixed;right:12px;top:12px;max-width:40vw;background:#2b0f0fcc;color:#ffdede;padding:8px 10px;border-radius:8px;border:1px solid #5a2a2a;display:none;z-index:3;white-space:pre-wrap}
+  button{cursor:pointer}
+  .progress{margin-top:6px;background:var(--barbg);border:1px solid var(--border);border-radius:10px;height:16px;position:relative;overflow:hidden}
+  .progress>span{position:absolute;left:0;top:0;bottom:0;width:0%;background:linear-gradient(90deg,var(--bar),#7ce7d6);}
+  .progress-meta{display:flex;justify-content:space-between;color:#cfe3ff;font-size:12px;margin-top:4px}
+  .etaBig{margin-top:8px;font-size:32px;font-weight:900;letter-spacing:.2px;color:#e9f2ff;text-align:center;text-shadow:0 0 22px rgba(45,212,191,.18)}
+  .opt{display:inline-flex;align-items:center;gap:8px;margin-left:8px;font-size:12px;color:#cfe3ff}
+  .pill{display:inline-block;margin-left:8px;padding:3px 8px;border:1px solid var(--border);border-radius:999px;background:#0b1220;color:#cfe3ff;font-size:12px}
+  /* --- stats tidy block --- */
+  .stats{display:grid;grid-template-columns:1fr 120px;gap:8px 12px;align-items:center;margin-top:8px}
+  .stats .label{opacity:.95}
+  .stats .value{text-align:right;font-variant-numeric:tabular-nums;color:#e9f2ff}
+  .stats .divider{grid-column:1/-1;height:0;border-top:1px dashed #203154;margin:4px 0}
+#etaDays{font-size:24px;font-weight:900;color:#ffffff;text-shadow:0 0 16px rgba(45,212,191,.15);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<canvas id="space"></canvas>
+
+<div id="hud">
+  <div><b>Управление</b> — <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> движение · <span class="key">Shift</span> буст · <span class="key">Space</span> стабилизация <span id="pillPause" class="pill" style="display:none;">Пауза</span></div>
+  <div class="section">
+    <button id="respawnBtn" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:#0b1220;color:#cfe3ff">Вернуть корабль в центр</button>
+    <button id="toggleSim" style="margin-left:6px;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:#0b1220;color:#cfe3ff">⏸ Пауза</button>
+    <label class="opt"><input type="checkbox" id="autoResume"> автозапуск после изменения</label>
+  </div>
+
+  <div class="section"><b>Параметры корабля и сцены</b></div>
+  <div class="grid" id="gridGame">
+    <div class="row"><label>Тяга (игровая)</label><input id="thrust" type="range" min="0.05" max="0.6" step="0.01" value="0.18"><div id="thrustV" class="val">0.18</div></div>
+    <div class="row"><label>Поворот (чувств.)</label><input id="turn" type="range" min="0.01" max="0.15" step="0.005" value="0.06"><div id="turnV" class="val">0.06</div></div>
+    <div class="row"><label>Сопротивление</label><input id="drag" type="range" min="0.97" max="0.999" step="0.001" value="0.992"><div id="dragV" class="val">0.992</div></div>
+    <div class="row"><label>Размер корабля</label><input id="shipSize" type="range" min="28" max="80" step="1" value="46"><div id="shipSizeV" class="val">46</div></div>
+    <div class="row"><label>Сила гравитации</label><input id="grav" type="range" min="0" max="1" step="0.01" value="0.6"><div id="gravV" class="val">0.60</div></div>
+    <div class="row"><label>Скорость орбит планет</label><input id="orbSpeed" type="range" min="0" max="1" step="0.01" value="0.25"><div id="orbSpeedV" class="val">0.25</div></div>
+    <div class="row"><label>Кол-во планет</label><input id="numPlanets" type="range" min="1" max="8" step="1" value="4"><div id="numPlanetsV" class="val">4</div></div>
+    <div class="row"><label>Кол-во кристаллов</label><input id="numCrystals" type="range" min="0" max="60" step="2" value="24"><div id="numCrystalsV" class="val">24</div></div>
+  </div>
+
+  <div class="section"><b>Параметры миссии</b></div>
+  <div class="grid" id="gridMission">
+    <div class="row"><label>Длина корабля (м)</label><input id="shipLength" type="range" min="20" max="120" step="1" value="46"><div id="shipLengthV" class="val">46 м</div></div>
+    <div class="row"><label>Вес груза (т)</label><input id="cargoWeight" type="range" min="0" max="300" step="10" value="40"><div id="cargoWeightV" class="val">40 т</div></div>
+    <div class="row"><label>Дистанция до Марса (млн км)</label><input id="missionMarsDist" type="range" min="50" max="300" step="5" value="225"><div id="missionMarsDistV" class="val">225 млн км</div></div>
+    <div class="row"><label>Скорость (км/с)</label><input id="missionSpeed" type="range" min="0.5" max="20" step="0.1" value="5"><div id="missionSpeedV" class="val">5 км/с</div></div>
+  </div>
+
+  <div class="section"><b>Показатели (онлайн)</b></div>
+<div class="stats">
+  <div class="label">Скорость (км/с)</div><div class="value" id="spdKM">—</div>
+  <div class="label">Оценка до Марса</div><div class="value" id="etaMars">—</div>
+  <div class="divider"></div>
+  <div class="label">До Марса ≈</div><div class="value" id="etaDays">—</div>
+  <div class="label">Общая масса</div><div class="value" id="massTotal">—</div>
+</div></div>
+    <div class="row"><label>Оценка до Марса</label><div class="val" id="etaMars">—</div></div>
+    <div class="row"><label>Общая масса</label><div class="val" id="massTotal">—</div></div>
+    <div class="row"><label>Счёт (кристаллы)</label><div class="val" id="score">0</div></div>
+  </div>
+
+  <div class="section"><b>Путь до Марса</b></div>
+  <div class="progress" id="progress"><span id="progressBar"></span></div>
+  <div class="progress-meta"><span id="progressTextL">0%</span><span id="progressTextR">0 / 0 км</span></div>
+  <div id="etaBig" class="etaBig">—</div>
+</div>
+
+<div id="radarWrap"><canvas id="radar" width="180" height="180"></canvas></div>
+<div id="legend">Подбирай кристаллы (●). Масса корабля и груза влияет на разгон. Меняй «Дистанция до Марса» и «Скорость», чтобы увидеть срок полёта.</div>
+<div id="err"></div>
+
+<script>
+(function(){
+  const pill = (show)=>{ document.getElementById('pillPause').style.display = show? 'inline-block':'none'; };
+  const showErr = (e)=>{ const el = document.getElementById('err'); el.style.display = 'block'; el.textContent = (e && (e.stack || e.message || e)) + ''; console.error(e); };
+  try{
+    const cvs = document.getElementById('space');
+    const ctx = cvs.getContext('2d', { alpha:false });
+    function resize(){ cvs.width = innerWidth; cvs.height = innerHeight; }
+    addEventListener('resize', resize); resize();
+
+    // ==== Пауза ====
+    let PAUSED = false; let pauseReason = '';
+    function setPaused(state, reason='btn'){
+      PAUSED = state; pauseReason = state ? reason : ''; pill(PAUSED);
+      const btn = document.getElementById('toggleSim');
+      if(btn) btn.textContent = PAUSED ? '▶️ Старт' : '⏸ Пауза';
+    }
+    document.getElementById('toggleSim').addEventListener('click', ()=> setPaused(!PAUSED, 'btn'));
+
+    // ==== Звёзды ====
+    const stars = [];
+    function makeStars(n,speed,size){
+      for(let i=0;i<n;i++){
+        stars.push({x:Math.random()*cvs.width, y:Math.random()*cvs.height, s:size*(0.6+Math.random()*0.8), v:speed*(0.6+Math.random()*0.8), a:0.4+Math.random()*0.6});
+      }
+    }
+    makeStars(110,8,1.2); makeStars(90,18,1.6); makeStars(70,28,2.2);
+
+    // ==== Слайдеры ====
+    const UI = {};
+    function initSlider(id){
+      const el = document.getElementById(id);
+      if(!el) return;
+      UI[id]=el;
+      const lab=document.getElementById(id+'V');
+      const fmt=(id,val)=>{
+        if(id==='massShip'||id==='massCargo'||id==='cargoWeight') return val+' т';
+        if(id==='marsDist'||id==='missionMarsDist') return val+' млн км';
+        if(id==='speedScale'||id==='missionSpeed') return val+' км/с';
+        if(id==='shipLength') return val+' м';
+        if(id==='shipSize'||id==='numPlanets'||id==='numCrystals') return val;
+        if(id==='drag') return (+val).toFixed(3);
+        return (+val).toFixed(2);
+      };
+      const upd=()=>{ if(lab) lab.textContent = fmt(id, el.value)};
+      el.addEventListener('input', upd);
+      upd();
+    }
+    ['thrust','turn','drag','shipSize','grav','orbSpeed','numPlanets','numCrystals','shipLength','cargoWeight','missionMarsDist','missionSpeed'].forEach(initSlider);
+    function ensureHiddenInput(id,val){
+      if(!document.getElementById(id)){
+        const inp = document.createElement('input');
+        inp.type='range'; inp.id=id; inp.value=val; inp.style.display='none';
+        document.body.appendChild(inp);
+        const span = document.createElement('div'); span.id=id+'V'; span.style.display='none'; document.body.appendChild(span);
+      }else{ document.getElementById(id).value = val; }
+      initSlider(id);
+    }
+    ensureHiddenInput('massShip', 120);
+    ensureHiddenInput('massCargo', 40);
+    ensureHiddenInput('marsDist', 225);
+    ensureHiddenInput('speedScale', 5);
+
+    // ==== Связка миссии и live HUD ====
+    function link(srcId, dstId, map){
+      const s = document.getElementById(srcId), d = document.getElementById(dstId), dv = document.getElementById(dstId+'V');
+      const upd = ()=>{ const v = map? map(+s.value) : +s.value; d.value = v; if(dv){ dv.textContent = (dstId==='speedScale'? v+' км/с' : dstId==='marsDist'? v+' млн км' : dstId.includes('mass') ? v+' т' : v); } d.dispatchEvent(new Event('input',{bubbles:true})); };
+      s.addEventListener('input', upd); upd();
+    }
+    link('shipLength','shipSize', v=>Math.round(Math.min(80, Math.max(28, v))));
+    link('cargoWeight','massCargo', v=>Math.round(v));
+    link('missionMarsDist','marsDist', v=>Math.round(v));
+    link('missionSpeed','speedScale', v=>v);
+
+    function updateHUDFromMission(){
+      const missionSpeed = parseFloat(document.getElementById('missionSpeed').value) || 0; // км/с (заданная скорость)
+      const dist_million_km = parseFloat(document.getElementById('missionMarsDist').value) || 0;
+      const dist_km = dist_million_km * 1e6;
+
+      const mShip = parseFloat(document.getElementById('massShip').value) || 0;
+      const mCargo = parseFloat(document.getElementById('massCargo').value) || 0;
+      const massTotal = mShip + mCargo;
+
+      const shipLen = parseFloat(document.getElementById('shipLength').value) || 0;
+
+      // --- Эмпирическая поправка: тяжёлый/длинный корабль сложнее разогнать -> эффективная скорость ниже
+      // Базовые значения из дефолта: 160 т и 46 м.
+      const BASE_MASS = 160;  // т
+      const BASE_LEN  = 46;   // м
+      const massPenalty = 1 + Math.max(-0.5, (massTotal - BASE_MASS) / BASE_MASS * 0.35); // +/-35% на каждые 100% массы
+      const sizePenalty = 1 + Math.max(-0.5, (shipLen   - BASE_LEN ) / BASE_LEN  * 0.20); // +/-20% на каждые 100% длины
+      const v_eff = Math.max(0.05, missionSpeed / (massPenalty * sizePenalty)); // км/с
+
+      // ETA
+      let etaTxt = '—';
+      if (v_eff > 0.02) {
+        const sec = dist_km / v_eff;
+        const days = sec / 86400;
+        etaTxt = (days >= 1) ? (days.toFixed(1) + ' дн') : ((sec/3600).toFixed(1) + ' ч');
+      }
+
+      // Показатели
+      document.getElementById('spdKM').textContent = v_eff.toFixed(2);
+      document.getElementById('etaMars').textContent = etaTxt;
+      const etaDaysEl=document.getElementById('etaDays'); if(etaDaysEl) etaDaysEl.textContent = etaTxt;
+      const etaBigEl=document.getElementById('etaBig'); if(etaBigEl) etaBigEl.textContent = 'До Марса ≈ '+etaTxt;
+      document.getElementById('massTotal').textContent = massTotal.toFixed(0) + ' т';
+
+      // Обновим правую подпись прогресса (цель)
+      const fmt = (v)=> (v>=1e6) ? (v/1e6).toFixed(2)+' млн км' : Math.round(v).toLocaleString('ru-RU')+' км';
+      const curRight = document.getElementById('progressTextR'); if(curRight){ const pieces = curRight.textContent.split('/'); const left = pieces[0].trim(); curRight.textContent = left + ' / ' + fmt(dist_km); }
+    }
+
+    // Автопауза при кручении, и МГНОВЕННОЕ обновление HUD (всегда)
+    let resumeTmr = null; const autoResume = document.getElementById('autoResume');
+    const sliders = document.querySelectorAll('#hud input[type="range"]');
+    function maybeResume(){ if (autoResume.checked && pauseReason==='ui') setPaused(false); }
+    function scheduleResume(delay=600){ clearTimeout(resumeTmr); resumeTmr = setTimeout(maybeResume, delay); }
+    sliders.forEach(s=>{
+      s.addEventListener('pointerdown', ()=> { setPaused(true, 'ui'); updateHUDFromMission(); });
+      s.addEventListener('input', ()=> { if (pauseReason!=='ui') setPaused(true,'ui'); updateHUDFromMission(); if(autoResume.checked) scheduleResume(); });
+      s.addEventListener('pointerup',   ()=> { updateHUDFromMission(); if(autoResume.checked) scheduleResume(); });
+      s.addEventListener('change',      ()=> { updateHUDFromMission(); if(autoResume.checked) scheduleResume(); });
+      s.addEventListener('touchend',    ()=> { updateHUDFromMission(); if(autoResume.checked) scheduleResume(); });
+    });
+
+    // ==== Планеты и орбиты ====
+    function randIn(a,b){ return a + Math.random()*(b-a); }
+    let PLANETS = [], CRYSTALS = [];
+    function buildPlanetsAndCrystals(){
+      PLANETS.length = 0; CRYSTALS.length = 0;
+      const n = +document.getElementById('numPlanets').value;
+      const colors = [['#7aa2ff','#3457c6'], ['#ff8aa8','#b23758'], ['#8bf0c1','#2f9a76'], ['#f0d38b','#a67c2e'], ['#c49bff','#5f39b8'], ['#ffb37a','#bf6b2b'], ['#9be0ff','#2f8cb4'], ['#9cff9a','#2f8b3a']];
+      const cx = cvs.width*0.5, cy = cvs.height*0.5;
+      for(let i=0;i<n;i++){
+        const dist = randIn(Math.min(cvs.width,cvs.height)*0.18, Math.min(cvs.width,cvs.height)*0.42);
+        const ang0 = Math.random()*Math.PI*2;
+        const r = randIn(34, 72);
+        const c = colors[i%colors.length];
+        const GM = 1000 + Math.pow(r,1.25)*10;
+        const dir = Math.random()<0.5? -1: 1;
+        PLANETS.push({ name:'P-'+(i+1), cx, cy, dist, ang:ang0, r, c1:c[0], c2:c[1], GM, dir });
+      }
+      const m = +document.getElementById('numCrystals').value;
+      for(let i=0;i<m;i++){
+        CRYSTALS.push({ x: Math.random()*cvs.width, y: Math.random()*cvs.height, r: 4+Math.random()*3, v: randIn(6,18), a: Math.random()*Math.PI*2, got:false });
+      }
+    }
+    buildPlanetsAndCrystals();
+    addEventListener('input', (e)=>{ if(e.target && (e.target.id==='numPlanets' || e.target.id==='numCrystals')){ buildPlanetsAndCrystals(); } });
+
+    // ==== Корабль ====
+    window.ship = { x:cvs.width*0.5, y:cvs.height*0.5, vx:0, vy:0, ax:0, ay:0, angle:-Math.PI*0.15, size:+document.getElementById('shipSize').value, score:0 };
+    const keys = {}; addEventListener('keydown', e=> keys[e.code]=true); addEventListener('keyup', e=> keys[e.code]=false);
+    document.getElementById('respawnBtn').addEventListener('click', ()=>{ ship.x = cvs.width*0.5; ship.y = cvs.height*0.5; ship.vx=0; ship.vy=0; ship.angle=-Math.PI*0.15; });
+
+    // ==== Рисование/физика ====
+    function drawStars(dt){ ctx.fillStyle = '#060a13'; ctx.fillRect(0,0,cvs.width,cvs.height); for(const s of stars){ s.x -= s.v*dt*60; if(s.x< -4){ s.x = cvs.width + Math.random()*80; s.y = Math.random()*cvs.height; } ctx.globalAlpha = s.a; ctx.fillStyle = '#cfe3ff'; ctx.fillRect(s.x,s.y,s.s,s.s);} ctx.globalAlpha=1; }
+    function drawPlanets(dt){ const speedK = +document.getElementById('orbSpeed').value; for(const p of PLANETS){ p.ang += p.dir * speedK * 0.2 * dt; const x = p.cx + Math.cos(p.ang)*p.dist; const y = p.cy + Math.sin(p.ang)*p.dist; p.x=x; p.y=y; const grad = ctx.createRadialGradient(x- p.r*0.3, y- p.r*0.3, p.r*0.2, x, y, p.r); grad.addColorStop(0, p.c1); grad.addColorStop(1, p.c2); ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x,y,p.r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y,p.r+2,0,Math.PI*2); ctx.stroke(); } }
+    function drawCrystals(dt){ for(const c of CRYSTALS){ if(c.got) continue; c.a += 0.6*dt; const tw = 0.5 + 0.5*Math.sin(c.a*3); ctx.fillStyle = `rgba(150,235,255,${0.6+0.4*tw})`; ctx.beginPath(); ctx.arc(c.x, c.y, c.r*(0.85+0.3*tw), 0, Math.PI*2); ctx.fill(); } }
+    
+    function drawShip(){
+      ship.size = +document.getElementById('shipSize').value;
+      const s = ship.size;
+      ctx.save();
+      ctx.translate(ship.x, ship.y);
+      ctx.rotate(ship.angle);
+
+      // -------- shadow (soft) --------
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 25;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 8;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.moveTo( s*0.9, 0);
+      ctx.lineTo( s*0.15,-s*0.48);
+      ctx.lineTo(-s*0.9, -s*0.28);
+      ctx.lineTo(-s*0.9,  s*0.28);
+      ctx.lineTo( s*0.15, s*0.48);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // -------- hull gradient --------
+      const hullGrad = ctx.createLinearGradient(-s*0.9, -s*0.6, s*0.9, s*0.6);
+      hullGrad.addColorStop(0,  '#2c5cff');
+      hullGrad.addColorStop(0.55,'#68a4ff');
+      hullGrad.addColorStop(1,  '#2b6bff');
+
+      // wings
+      ctx.fillStyle = hullGrad;
+      ctx.strokeStyle = '#e6f0ff';
+      ctx.lineWidth = 2;
+
+      // left wing
+      ctx.beginPath();
+      ctx.moveTo(-s*0.2, -s*0.38);
+      ctx.lineTo( s*0.35, -s*0.20);
+      ctx.lineTo( s*0.20, -s*0.05);
+      ctx.lineTo(-s*0.55,-s*0.12);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      // right wing
+      ctx.beginPath();
+      ctx.moveTo(-s*0.2,  s*0.38);
+      ctx.lineTo( s*0.35,  s*0.20);
+      ctx.lineTo( s*0.20,  s*0.05);
+      ctx.lineTo(-s*0.55, s*0.12);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      // fuselage
+      ctx.beginPath();
+      ctx.moveTo( s*0.95, 0);
+      ctx.lineTo( s*0.15,-s*0.46);
+      ctx.lineTo(-s*0.7, -s*0.28);
+      ctx.lineTo(-s*0.7,  s*0.28);
+      ctx.lineTo( s*0.15, s*0.46);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      // nose highlight
+      const noseGrad = ctx.createRadialGradient(s*0.45,0,s*0.05, s*0.65,0,s*0.38);
+      noseGrad.addColorStop(0,'rgba(255,255,255,0.85)');
+      noseGrad.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle = noseGrad;
+      ctx.beginPath();
+      ctx.ellipse(s*0.55,0, s*0.22, s*0.12, 0, 0, Math.PI*2);
+      ctx.fill();
+
+      // cockpit bubble
+      const bubble = ctx.createRadialGradient(s*0.25,-s*0.02, s*0.01, s*0.35,0, s*0.22);
+      bubble.addColorStop(0,'rgba(255,255,255,0.95)');
+      bubble.addColorStop(1,'rgba(180,220,255,0.55)');
+      ctx.fillStyle = bubble;
+      ctx.beginPath();
+      ctx.ellipse(s*0.28, 0, s*0.18, s*0.14, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle='rgba(240,250,255,0.9)';
+      ctx.lineWidth=1.5;
+      ctx.stroke();
+
+      // decorative stripes
+      ctx.lineWidth=1.2; ctx.strokeStyle='rgba(230,245,255,0.65)';
+      ctx.beginPath(); ctx.moveTo(-s*0.35,-s*0.18); ctx.lineTo(s*0.4,-s*0.06); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-s*0.35, s*0.18); ctx.lineTo(s*0.4, s*0.06); ctx.stroke();
+
+      // nav lights (blink)
+      const blink = 0.6 + 0.4*Math.sin(TICK*4);
+      ctx.fillStyle = `rgba(45,212,191,${blink})`; // teal
+      ctx.beginPath(); ctx.arc(s*0.35,-s*0.2, 3, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(s*0.35, s*0.2, 3, 0, Math.PI*2); ctx.fill();
+
+      // -------- engine flame --------
+      const w = (keys['KeyW']||false), r = (keys['KeyS']||keys['KeyX']||false);
+      const boost = (keys['ShiftLeft']||keys['ShiftRight'])? 1.8 : 1.0;
+      const power = (w?1.0:(r?0.5:0.0)) * boost;
+      if(power>0){
+        const len = (18 + Math.random()*10) * (r?0.9:1.3) * power;
+        for(let i=0;i<2;i++){
+          const jitter = (Math.random()-0.5)*4;
+          const grad = ctx.createLinearGradient(-s*0.8,0, -s*0.8-len,0);
+          if(r){
+            grad.addColorStop(0,'rgba(160,220,255,1)');
+            grad.addColorStop(0.5,'rgba(80,160,255,0.6)');
+          }else{
+            grad.addColorStop(0,'rgba(255,240,180,1)');
+            grad.addColorStop(0.5,'rgba(255,150,50,0.7)');
+          }
+          grad.addColorStop(1,'rgba(0,0,0,0)');
+          ctx.fillStyle = grad;
+          ctx.globalCompositeOperation='lighter';
+          ctx.beginPath();
+          ctx.moveTo(-s*0.7, -s*0.09 + jitter*0.04);
+          ctx.lineTo(-s*0.7-len, 0 + jitter*0.12);
+          ctx.lineTo(-s*0.7,  s*0.09 + jitter*0.04);
+          ctx.closePath();
+          ctx.fill();
+          ctx.globalCompositeOperation='source-over';
+        }
+      }
+
+      ctx.restore();
+    }
+    let smSpd=null, smSecToMars=null, missionDistKm=0;
+    function step(dt){
+      const turn=+document.getElementById('turn').value; if(keys['KeyA']) ship.angle-=turn; if(keys['KeyD']) ship.angle+=turn;
+      const mShip=+document.getElementById('massShip').value, mCargo=+document.getElementById('massCargo').value, massTotal=mShip+mCargo;
+      const massFactor = Math.max(0.2, massTotal/120);
+      let thrust=+document.getElementById('thrust').value; if(keys['ShiftLeft']||keys['ShiftRight']) thrust*=2.1; thrust/=massFactor;
+      let ax=0, ay=0; if(keys['KeyW']){ ax+=Math.cos(ship.angle)*thrust*(dt*60); ay+=Math.sin(ship.angle)*thrust*(dt*60);} if(keys['KeyS']||keys['KeyX']){ ax-=Math.cos(ship.angle)*thrust*0.7*(dt*60); ay-=Math.sin(ship.angle)*thrust*0.7*(dt*60);}
+      const gravK=+document.getElementById('grav').value, soft=25;
+      for(const p of PLANETS){ const dx=p.x-ship.x, dy=p.y-ship.y; const r2=dx*dx+dy*dy+soft*soft; const r=Math.sqrt(r2); const f=gravK*p.GM/r2; ax+=f*(dx/r)*(dt*60); ay+=f*(dy/r)*(dt*60); if(r<p.r+8){ const nx=dx/r, ny=dy/r; const vn=ship.vx*nx+ship.vy*ny; if(vn>0){ ship.vx-=1.6*vn*nx; ship.vy-=1.6*vn*ny; } ship.x=p.x - nx*(p.r+8); ship.y=p.y - ny*(p.r+8);} }
+      ship.vx+=ax; ship.vy+=ay; if(keys['Space']){ ship.vx*=0.96; ship.vy*=0.96; } const drag=+document.getElementById('drag').value; ship.vx*=drag; ship.vy*=drag; ship.x += ship.vx*(dt*60); ship.y += ship.vy*(dt*60);
+      const M=80; if(ship.x<-M) ship.x=cvs.width+M; if(ship.x>cvs.width+M) ship.x=-M; if(ship.y<-M) ship.y=cvs.height+M; if(ship.y>cvs.height+M) ship.y=-M;
+      const vUnits=Math.hypot(ship.vx,ship.vy); const kmPerUnitPerSec=+document.getElementById('speedScale').value; const raw_v_kms=vUnits*kmPerUnitPerSec;
+
+      // Применим ту же поправку массы/длины и к онлайн-скорости, чтобы совпадало с HUD
+      const shipLen = parseFloat(document.getElementById('shipLength').value) || 0;
+      const BASE_MASS = 160, BASE_LEN = 46;
+      const massPenalty = 1 + Math.max(-0.5, (massTotal - BASE_MASS) / BASE_MASS * 0.35);
+      const sizePenalty = 1 + Math.max(-0.5, (shipLen   - BASE_LEN ) / BASE_LEN  * 0.20);
+      const v_kms = Math.max(0.05, raw_v_kms / (massPenalty*sizePenalty));
+
+      missionDistKm += v_kms*dt;
+      const dist_km = (+document.getElementById('marsDist').value) * 1e6; const secondsToMars = v_kms>0.02 ? (dist_km / v_kms) : Infinity;
+      if(smSpd===null) smSpd=v_kms; else smSpd += 0.15*(v_kms-smSpd);
+      if(isFinite(secondsToMars)){ if(smSecToMars===null||!isFinite(smSecToMars)) smSecToMars=secondsToMars; else smSecToMars += 0.15*(secondsToMars-smSecToMars);} else smSecToMars=Infinity;
+      document.getElementById('spdKM').textContent = smSpd.toFixed(2);
+      let etaTxt='—'; if(isFinite(smSecToMars)){ const days=smSecToMars/86400; etaTxt=(days>=1)?(days.toFixed(1)+' дн'):((smSecToMars/3600).toFixed(1)+' ч'); }
+      document.getElementById('etaMars').textContent=etaTxt;
+      const etaDaysEl2=document.getElementById('etaDays'); if(etaDaysEl2) etaDaysEl2.textContent = etaTxt;
+      const etaBigEl=document.getElementById('etaBig'); if(etaBigEl) etaBigEl.textContent = 'До Марса ≈ '+etaTxt;
+      document.getElementById('massTotal').textContent=(massTotal.toFixed(0)+' т');
+      document.getElementById('score').textContent=ship.score;
+      const prog = Math.max(0, Math.min(1, missionDistKm / Math.max(1, dist_km)));
+      document.getElementById('progressBar').style.width = (prog*100).toFixed(1)+'%';
+      document.getElementById('progressTextL').textContent = (prog*100).toFixed(1)+'%';
+      const fmt=(v)=> (v>=1e6)? (v/1e6).toFixed(2)+' млн км' : Math.round(v).toLocaleString('ru-RU')+' км';
+      document.getElementById('progressTextR').textContent = fmt(missionDistKm) + ' / ' + fmt(dist_km);
+    }
+
+    // ==== Радар ====
+    const radar=document.getElementById('radar'); const rctx=radar.getContext('2d');
+    function drawRadar(){ const W=radar.width,H=radar.height; rctx.clearRect(0,0,W,H); rctx.fillStyle='#0b1220'; rctx.fillRect(0,0,W,H); rctx.strokeStyle='#163059'; rctx.lineWidth=1; rctx.beginPath(); rctx.arc(W/2,H/2, W*0.46,0,Math.PI*2); rctx.stroke(); rctx.beginPath(); rctx.arc(W/2,H/2, W*0.30,0,Math.PI*2); rctx.stroke(); rctx.beginPath(); rctx.arc(W/2,H/2, W*0.14,0,Math.PI*2); rctx.stroke(); for(const p of PLANETS){ const x=(p.x/cvs.width)*W, y=(p.y/cvs.height)*H; rctx.fillStyle='#7ac6ff'; rctx.beginPath(); rctx.arc(x,y, Math.max(2,p.r*Math.min(W,H)/Math.max(cvs.width,cvs.height)),0,Math.PI*2); rctx.fill(); } for(const c of CRYSTALS){ if(c.got) continue; const x=(c.x/cvs.width)*W, y=(c.y/cvs.height)*H; rctx.fillStyle='#9cf9ff'; rctx.fillRect(x-1,y-1,2,2);} const sx=(ship.x/cvs.width)*W, sy=(ship.y/cvs.height)*H; rctx.fillStyle='#2dd4bf'; rctx.beginPath(); rctx.arc(sx,sy,3,0,Math.PI*2); rctx.fill(); }
+
+    // ==== Главный цикл ====
+    let last=performance.now(); let TICK=0;
+    function loop(now){
+      TICK = now*0.001;
+      const dt=Math.min(0.05,(now-last)/1000); last=now;
+      const dtEff=PAUSED?0:dt;
+      drawStars(dtEff); drawPlanets(dtEff); drawCrystals(dtEff);
+      if(!PAUSED) step(dt);
+      drawShip(); drawRadar();
+      requestAnimationFrame(loop);
+    }
+    loop(performance.now());
+  }catch(e){ showErr(e); }
+  window.addEventListener('error', (ev)=>{ const msg = ev.message + '\\n' + (ev.filename||'') + ':' + ev.lineno; const el=document.getElementById('err'); el.style.display='block'; el.textContent=msg; });
+})();
+</script>
+</body>
+</html>

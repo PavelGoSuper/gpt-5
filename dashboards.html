@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Дашборды - GPT‑5 CRM </title>
+<style>
+  :root {
+    --bg-dark:#0b1020; --panel-dark:#0f172a; --text-dark:#e7edf7; --muted-dark:#9db0cf; --border-dark:#1f2a44; --accent:#2563eb;
+    --bg-light:#f6f8ff; --panel-light:#ffffff; --text-light:#0b1020; --muted-light:#5b6b88; --border-light:#dfe7ff;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  .app { min-height: 100vh; background: var(--bg); color: var(--text); }
+  .topbar {
+    position: sticky; top: 0; zIndex: 10; backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1120px; margin:0 auto; padding:10px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+  }
+  .row { display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; }
+  .spark { width:18px; height:18px; display:inline-block; }
+  .btn, select, input[type="number"], input[type="text"] {
+    height:34px; background: transparent; color: var(--text); border: 1px solid var(--border);
+    padding: 0 12px; border-radius: 12px; cursor: pointer;
+  }
+  .btn[disabled] { opacity:.5; cursor: default; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.dashed { border-style: dashed; }
+  .container { max-width:1120px; margin:0 auto; padding:16px 20px; }
+  .pill { display:inline-flex; padding:2px 8px; border-radius:999px; border:1px solid var(--border); color: var(--muted); }
+  .hint { color: var(--muted); font-size:12px; }
+  .alert { background: rgba(239,68,68,.1); border:1px solid var(--border); border-radius:14px; padding:12px; }
+  .grid-5 { display:grid; gap:16px; grid-template-columns:repeat(5, minmax(0,1fr)); }
+  .grid-3 { display:grid; gap:16px; grid-template-columns:repeat(3, minmax(0,1fr)); margin-top:16px; }
+  .card { position: relative; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; overflow:hidden; }
+  .card .head { padding:12px 16px; border-bottom:1px solid var(--border); font-weight:600; display:flex; align-items:center; justify-content:space-between; }
+  .card .body { padding:12px 16px; }
+  .kpi { position: relative; }
+  .kpi-title { padding:10px 14px; border-bottom:1px solid var(--border); color: var(--muted); font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:space-between; }
+  .kpi-body { padding:10px 14px; }
+  .kpi-value { font-size:28px; font-weight:800; transition: transform .24s ease, opacity .24s ease; }
+  .kpi:hover .kpi-value { transform: translateY(-2px); }
+  .delta { font-size:12px; padding:2px 8px; border-radius:999px; }
+  .delta.pos { background: rgba(22,163,74,.15); color:#0f5132; }
+  .delta.neg { background: rgba(239,68,68,.15); color:#842029; }
+  table { width:100%; border-collapse: collapse; font-size:14px; }
+  th, td { padding:8px 8px; border-top:1px solid var(--border); text-align:left; }
+  td.right { text-align: right; }
+  .stage { padding:2px 8px; border-radius:999px; border:1px solid var(--border); }
+  .stage.won { background: rgba(22,163,74,.15); color:#0f5132; }
+  .stage.lost{ background: rgba(239,68,68,.15); color:#842029; }
+  .footer { text-align:center; color: var(--muted); font-size:12px; padding:24px; }
+  [draggable="true"] { cursor: grab; }
+  /* Themes via CSS variables */
+  .theme-dark { --bg: var(--bg-dark); --panel: var(--panel-dark); --text: var(--text-dark); --muted: var(--muted-dark); --border: var(--border-dark); }
+  .theme-light{ --bg: var(--bg-light); --panel: var(--panel-light); --text: var(--text-light); --muted: var(--muted-light); --border: var(--border-light); }
+  /* Simple focus */
+  .btn:focus, select:focus, input:focus { outline: 2px solid rgba(37,99,235,.35); outline-offset:2px; }
+  /* SVG canvases */
+  .svg-host { width:100%; height:300px; }
+  /* Close button */
+  .close {
+    border: 1px solid var(--border); border-radius: 10px;
+    width: 26px; height: 26px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; background: transparent; color: var(--muted);
+  }
+  .close:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div id="app" class="app theme-dark">
+  <div class="topbar" id="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <svg class="spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z"/>
+        </svg>
+        <strong>GPT‑5 CRM</strong>
+      </div>
+      <div class="row">
+        <button class="btn period" data-p="7">7d</button>
+        <button class="btn period" data-p="14">14d</button>
+        <button class="btn period" data-p="30">30d</button>
+        <button class="btn period" data-p="90">90d</button>
+        <select id="channelFilter"></select>
+        <input id="query" type="text" placeholder="Поиск сделок…" />
+        <button id="exportAll" class="btn" title="Экспорт CSV">⬇️</button>
+        <button id="toggleTheme" class="btn primary">Светлая</button>
+        <button id="resetLayout" class="btn dashed">Сбросить размещение</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="alertHost" class="container" style="display:none;">
+    <div class="alert" id="alertBox"><strong>Внимание:</strong> Win-Rate ниже порога <span id="threshShow"></span>% за выбранный период.</div>
+  </div>
+
+  <main class="container" id="main">
+    <div class="row" style="gap:8px; margin-bottom:10px;">
+      <span id="segPill" class="pill">Сегмент: All</span>
+      <span id="perPill" class="pill">Период: 30 дней</span>
+      <span id="chanPill" class="pill">Канал: All</span>
+      <span style="margin-left:auto;"></span>
+      <span class="hint">Порог Win-Rate:&nbsp;</span>
+      <input id="threshold" type="number" min="1" max="100" value="18" style="width:64px;"/>
+      <span class="hint" style="margin-left:8px;">Совет: перетаскивайте карточки мышью</span>
+      <button class="btn" style="border:1px solid transparent;">⚙️ Настроить виджеты</button>
+    </div>
+
+    <section id="kpiRow" class="grid-5"></section>
+
+    <section id="widgets" class="grid-3"></section>
+  </main>
+
+  <div class="footer">Супер‑демо от GPT‑5 • Реальные данные можно подать через API.</div>
+</div>
+
+<script>
+// ======== Utilities ========
+const STORAGE = {
+  get(key, def){ try{ const v = localStorage.getItem(key); return v!==null ? JSON.parse(v) : def; }catch{ return def; } },
+  set(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch{} }
+};
+const fmtMoney = v => new Intl.NumberFormat('en-US',{ style:'currency', currency:'USD', maximumFractionDigits:0 }).format(v);
+function exportCSV(filename, rows){
+  if(!rows?.length) return;
+  const head = Object.keys(rows[0]).join(',');
+  const body = rows.map(r=>Object.values(r).join(',')).join('\\n');
+  const blob = new Blob([head+'\\n'+body], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+}
+
+// ======== Mock data ========
+function generateSeries(days=30, seed=1){
+  let x = seed;
+  const rand = () => (x = (x*9301 + 49297) % 233280) / 233280;
+  const today = new Date();
+  return Array.from({length:days}).map((_,i)=>{
+    const d = new Date(today); d.setDate(today.getDate()-(days-i-1));
+    const revenue = Math.round(5000 + rand()*8000 + i*120);
+    const leads = Math.round(40 + rand()*60);
+    const win = Math.round(leads*(0.2 + rand()*0.2));
+    return {
+      date: d.toISOString().slice(0,10),
+      revenue, leads, won: win,
+      nps: Math.round(50 + rand()*40),
+      churn: +(2 + rand()*1.5).toFixed(2),
+      channel: ['Ads','SEO','Referral','Email'][Math.floor(rand()*4)]
+    };
+  });
+}
+
+const COLORS = ['#2563eb','#16a34a','#f59e0b','#ef4444','#14b8a6','#8b5cf6'];
+
+// ======== State ========
+const state = {
+  period: STORAGE.get('crm.period','30'),
+  segment: STORAGE.get('crm.segment','All'),
+  query: STORAGE.get('crm.query',''),
+  theme: STORAGE.get('crm.theme','dark'),
+  threshold: STORAGE.get('crm.threshold',18),
+  channel: STORAGE.get('crm.channel','All'),
+  kpiOrder: STORAGE.get('crm.kpiOrder',['rev','leads','won','winrate','nps']),
+  widgetOrder: STORAGE.get('crm.widgetOrder',['revenue','channels','funnel','deals','picker']),
+  page: STORAGE.get('crm.page',1)
+};
+function saveState(key){ STORAGE.set('crm.'+key, state[key]); }
+
+// ======== Derived ========
+function filteredData(){
+  const data = generateSeries(Number(state.period), 7);
+  return {
+    data,
+    dataFiltered: state.channel==='All' ? data : data.filter(d=>d.channel===state.channel)
+  };
+}
+function calcKPIs(dataFiltered){
+  const rev = dataFiltered.reduce((s,d)=>s+d.revenue,0);
+  const leads = dataFiltered.reduce((s,d)=>s+d.leads,0);
+  const won = dataFiltered.reduce((s,d)=>s+d.won,0);
+  const winRate = leads ? Math.round((won/leads)*100) : 0;
+  const nps = Math.round(dataFiltered.reduce((s,d)=>s+d.nps,0) / (dataFiltered.length || 1));
+  return { rev, leads, won, winRate, nps };
+}
+function channelAgg(data){
+  const map = new Map();
+  data.forEach(d=> map.set(d.channel, (map.get(d.channel)||0) + d.revenue));
+  return Array.from(map, ([name,value])=>({name,value}));
+}
+function funnelData(dataFiltered){
+  const totalLeads = dataFiltered.reduce((s,d)=>s+d.leads,0);
+  const qualified = Math.round(totalLeads*0.65);
+  const proposal = Math.round(totalLeads*0.42);
+  const won = Math.round(totalLeads*0.23);
+  return [
+    { stage:'Лиды', value: totalLeads },
+    { stage:'Квалифицировано', value: qualified },
+    { stage:'Предложение', value: proposal },
+    { stage:'Выиграно', value: won }
+  ];
+}
+function allDeals(data, dataFiltered, query){
+  const rows = Array.from({length:32}).map((_,i)=>{
+    const d = dataFiltered[Math.floor((i/32)*dataFiltered.length)] || dataFiltered[0] || data[0];
+    const amount = Math.round(2000 + (i%7)*1200 + (i*97)%9000);
+    const stages = ['Lead','Qualified','Proposal','Won','Lost'];
+    const st = stages[i % stages.length];
+    return {
+      id:`D-${1000+i}`,
+      name:`Deal ${1000+i}`,
+      owner: ['Anna','Mark','Li','Carlos','Sara'][i%5],
+      stage: st,
+      amount,
+      date: d?.date,
+      channel: d?.channel || 'SEO'
+    };
+  });
+  return rows.filter(r=> r.name.toLowerCase().includes(query.toLowerCase()));
+}
+
+// ======== DOM helpers ========
+const appEl = document.getElementById('app');
+const perPill = document.getElementById('perPill');
+const chanPill = document.getElementById('chanPill');
+const channelSel = document.getElementById('channelFilter');
+const queryInput = document.getElementById('query');
+const thresholdInput = document.getElementById('threshold');
+const alertHost = document.getElementById('alertHost');
+const threshShow = document.getElementById('threshShow');
+const kpiRow = document.getElementById('kpiRow');
+const widgetContainer = document.getElementById('widgets');
+
+function setTheme(name){
+  state.theme = name; saveState('theme');
+  appEl.classList.toggle('theme-dark', name==='dark');
+  appEl.classList.toggle('theme-light', name==='light');
+  document.getElementById('toggleTheme').textContent = name==='dark' ? 'Светлая' : 'Тёмная';
+}
+setTheme(state.theme);
+
+// ======== Charting: minimal SVG helpers (no libs) ========
+function lineChart(host, series, keys){
+  host.innerHTML = '';
+  const w = host.clientWidth, h = host.clientHeight;
+  const pad = 32;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('width', w); svg.setAttribute('height', h);
+  const minY = 0;
+  const maxY = Math.max(...series.map(d=> Math.max(...keys.map(k=>d[k])))) * 1.1;
+  const stepX = (w - pad*2) / Math.max(1, series.length-1);
+  const scaleY = v => h - pad - (v - minY) / (maxY - minY) * (h - pad*2);
+  // grid
+  const grid = document.createElementNS(svg.namespaceURI,'g');
+  for(let i=0;i<=5;i++){
+    const y = pad + i*(h-pad*2)/5;
+    const ln = document.createElementNS(svg.namespaceURI,'line');
+    ln.setAttribute('x1', pad); ln.setAttribute('x2', w-pad);
+    ln.setAttribute('y1', y); ln.setAttribute('y2', y);
+    ln.setAttribute('stroke', 'rgba(128,128,160,.35)'); ln.setAttribute('stroke-dasharray','3 3');
+    grid.appendChild(ln);
+  }
+  svg.appendChild(grid);
+  keys.forEach((key, idx)=>{
+    const path = document.createElementNS(svg.namespaceURI,'path');
+    let dstr='';
+    series.forEach((row,i)=>{
+      const x = pad + i*stepX;
+      const y = scaleY(row[key]);
+      dstr += (i?'L':'M') + x + ' ' + y + ' ';
+    });
+    path.setAttribute('d', dstr.trim());
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke', COLORS[idx%COLORS.length]);
+    path.setAttribute('stroke-width','2');
+    svg.appendChild(path);
+  });
+  host.appendChild(svg);
+}
+
+function pieChart(host, items){
+  host.innerHTML='';
+  const w = host.clientWidth, h = host.clientHeight;
+  const r = Math.min(w,h)/2 - 10;
+  const cx = w/2, cy = h/2;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('width', w); svg.setAttribute('height', h);
+  const total = items.reduce((s,i)=>s+i.value,0) || 1;
+  let a0 = -Math.PI/2;
+  items.forEach((it, idx)=>{
+    const a1 = a0 + (it.value/total)*Math.PI*2;
+    const x0 = cx + r*Math.cos(a0), y0 = cy + r*Math.sin(a0);
+    const x1 = cx + r*Math.cos(a1), y1 = cy + r*Math.sin(a1);
+    const large = (a1 - a0) > Math.PI ? 1 : 0;
+    const path = document.createElementNS(svg.namespaceURI,'path');
+    const d = `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
+    path.setAttribute('d', d);
+    path.setAttribute('fill', COLORS[idx%COLORS.length]);
+    svg.appendChild(path);
+    a0 = a1;
+  });
+  host.appendChild(svg);
+}
+
+function barHChart(host, items){
+  host.innerHTML='';
+  const w = host.clientWidth, h = host.clientHeight;
+  const pad = 40, gap = 14;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('width', w); svg.setAttribute('height', h);
+  const maxV = Math.max(...items.map(i=>i.value)) || 1;
+  const barH = (h - pad*1.5 - gap*(items.length-1)) / items.length;
+  items.forEach((it, idx)=>{
+    const y = pad + idx*(barH+gap);
+    const wv = (w - pad*2) * (it.value/maxV);
+    const rect = document.createElementNS(svg.namespaceURI,'rect');
+    rect.setAttribute('x', pad); rect.setAttribute('y', y);
+    rect.setAttribute('width', wv); rect.setAttribute('height', barH);
+    rect.setAttribute('fill', COLORS[(idx+5)%COLORS.length]);
+    rect.setAttribute('rx', 8); rect.setAttribute('ry', 8);
+    svg.appendChild(rect);
+    // labels
+    const lbl = document.createElementNS(svg.namespaceURI,'text');
+    lbl.setAttribute('x', 10); lbl.setAttribute('y', y + barH/2 + 4);
+    lbl.setAttribute('fill', 'currentColor'); lbl.setAttribute('font-size','12');
+    lbl.textContent = it.stage;
+    svg.appendChild(lbl);
+  });
+  host.appendChild(svg);
+}
+
+// ======== Close button helper ========
+function createClose(onClick){
+  const b = document.createElement('button');
+  b.className = 'close';
+  b.setAttribute('title','Удалить');
+  b.textContent = '✕';
+  b.addEventListener('click', (e)=>{ e.stopPropagation(); onClick(); });
+  return b;
+}
+
+// ======== KPI component ========
+function kpiCard({title, value, delta, hint}, id){
+  const wrap = document.createElement('div');
+  wrap.className = 'kpi card';
+  const head = document.createElement('div'); head.className='kpi-title';
+  const t = document.createElement('span'); t.textContent = title;
+  const close = createClose(()=>{
+    state.kpiOrder = state.kpiOrder.filter(x=>x!==id); saveState('kpiOrder'); renderKPIs();
+  });
+  head.append(t, close);
+  const body = document.createElement('div'); body.className='kpi-body';
+  const line = document.createElement('div'); line.style.display='flex'; line.style.alignItems='baseline'; line.style.gap='8px';
+  const v = document.createElement('div'); v.className='kpi-value'; v.textContent = value;
+  const d = document.createElement('span'); d.className='delta ' + (delta>=0? 'pos':'neg'); d.textContent = (delta>=0?'+':'') + delta + '%';
+  line.appendChild(v); line.appendChild(d);
+  body.appendChild(line);
+  if(hint){ const h = document.createElement('div'); h.style.fontSize='12px'; h.style.color='var(--muted)'; h.style.marginTop='6px'; h.textContent = hint; body.appendChild(h); }
+  wrap.appendChild(head); wrap.appendChild(body);
+  return wrap;
+}
+
+// ======== Drag & Drop ========
+function enableDragFor(el, id, bucket){
+  el.setAttribute('draggable','true');
+  el.addEventListener('dragstart', e=>{
+    e.dataTransfer.setData('text/plain', JSON.stringify({id, bucket}));
+  });
+  el.addEventListener('dragover', e=> e.preventDefault());
+  el.addEventListener('drop', e=>{
+    e.preventDefault();
+    let data; try{ data = JSON.parse(e.dataTransfer.getData('text/plain')); }catch{}
+    if(!data || data.bucket!==bucket || data.id===id) return;
+    const list = bucket==='kpi' ? [...state.kpiOrder] : [...state.widgetOrder];
+    const from = list.indexOf(data.id); const to = list.indexOf(id);
+    if(from===-1 || to===-1) return;
+    const [moved] = list.splice(from,1);
+    list.splice(to,0,moved);
+    if(bucket==='kpi'){ state.kpiOrder=list; saveState('kpiOrder'); renderKPIs(); }
+    else { state.widgetOrder=list; saveState('widgetOrder'); renderWidgets(); }
+  });
+}
+
+// ======== Rendering ========
+function renderHeader(data){
+  // channel options
+  const agg = channelAgg(data.data);
+  channelSel.innerHTML = '';
+  const optAll = document.createElement('option'); optAll.value='All'; optAll.textContent='Все каналы'; channelSel.appendChild(optAll);
+  agg.forEach(c=>{ const o=document.createElement('option'); o.value=c.name; o.textContent=c.name; channelSel.appendChild(o); });
+  channelSel.value = state.channel;
+  perPill.textContent = 'Период: ' + state.period + ' дней';
+  chanPill.textContent = 'Канал: ' + state.channel;
+  queryInput.value = state.query;
+  thresholdInput.value = state.threshold;
+}
+function renderAlert(kpis){
+  if(kpis.winRate < state.threshold){
+    alertHost.style.display = 'block';
+    threshShow.textContent = state.threshold;
+  } else {
+    alertHost.style.display = 'none';
+  }
+}
+function renderKPIs(){
+  const {data, dataFiltered} = filteredData();
+  const kpis = calcKPIs(dataFiltered);
+  renderAlert(kpis);
+  const map = {
+    rev: ()=> kpiCard({title:'Выручка', value: fmtMoney(kpis.rev), delta: 8, hint:'Сумма по всем каналам'}, 'rev'),
+    leads: ()=> kpiCard({title:'Лиды', value: kpis.leads, delta: 5, hint:'За выбранный период'}, 'leads'),
+    won: ()=> kpiCard({title:'Сделок выиграно', value: kpis.won, delta: 3, hint:'Конвертировано в продажи'}, 'won'),
+    winrate: ()=> kpiCard({title:'Win‑Rate', value: kpis.winRate + '%', delta: (kpis.winRate - state.threshold), hint: 'Порог ' + state.threshold + '%'}, 'winrate'),
+    nps: ()=> kpiCard({title:'NPS', value: kpis.nps, delta: 2, hint:'Средний индекс лояльности'}, 'nps')
+  };
+  kpiRow.innerHTML='';
+  state.kpiOrder.forEach(id=>{
+    const host = document.createElement('div');
+    host.title = 'Перетащите, чтобы изменить порядок';
+    enableDragFor(host, id, 'kpi');
+    host.appendChild(map[id]());
+    kpiRow.appendChild(host);
+  });
+}
+function renderWidgets(){
+  const {data, dataFiltered} = filteredData();
+  const dealsAll = allDeals(data, dataFiltered, state.query);
+  const perPage = 8;
+  const pages = Math.max(1, Math.ceil(dealsAll.length / perPage));
+  if(state.page > pages) state.page = 1;
+  const deals = dealsAll.slice((state.page-1)*perPage, state.page*perPage);
+
+  const widgets = {
+    revenue(){
+      const card = document.createElement('div'); card.className='card'; card.style.gridColumn='span 2';
+      const head = document.createElement('div'); head.className='head';
+      const title = document.createElement('span'); title.textContent='Динамика выручки';
+      const close = createClose(()=>{ state.widgetOrder = state.widgetOrder.filter(x=>x!=='revenue'); saveState('widgetOrder'); renderWidgets(); });
+      head.append(title, close);
+      const body = document.createElement('div'); body.className='body';
+      const host = document.createElement('div'); host.className='svg-host'; setTimeout(()=> lineChart(host, dataFiltered, ['revenue','won']), 0);
+      body.appendChild(host);
+      card.append(head, body);
+      return card;
+    },
+    channels(){
+      const card = document.createElement('div'); card.className='card';
+      const head = document.createElement('div'); head.className='head';
+      const title = document.createElement('span'); title.textContent='Каналы продаж';
+      const close = createClose(()=>{ state.widgetOrder = state.widgetOrder.filter(x=>x!=='channels'); saveState('widgetOrder'); renderWidgets(); });
+      head.append(title, close);
+      const body = document.createElement('div'); body.className='body';
+      const host = document.createElement('div'); host.className='svg-host'; setTimeout(()=> pieChart(host, channelAgg(data)), 0);
+      body.appendChild(host);
+      card.append(head, body);
+      return card;
+    },
+    funnel(){
+      const card = document.createElement('div'); card.className='card';
+      const head = document.createElement('div'); head.className='head';
+      const title = document.createElement('span'); title.textContent='Воронка продаж';
+      const close = createClose(()=>{ state.widgetOrder = state.widgetOrder.filter(x=>x!=='funnel'); saveState('widgetOrder'); renderWidgets(); });
+      head.append(title, close);
+      const body = document.createElement('div'); body.className='body';
+      const host = document.createElement('div'); host.className='svg-host'; setTimeout(()=> barHChart(host, funnelData(dataFiltered)), 0);
+      body.appendChild(host);
+      card.append(head, body);
+      return card;
+    },
+    deals(){
+      const card = document.createElement('div'); card.className='card'; card.style.gridColumn='span 2';
+      const head = document.createElement('div'); head.className='head';
+      const title = document.createElement('span'); title.textContent='Топ‑сделки';
+      const close = createClose(()=>{ state.widgetOrder = state.widgetOrder.filter(x=>x!=='deals'); saveState('widgetOrder'); renderWidgets(); });
+      head.append(title, close);
+      const body = document.createElement('div'); body.className='body';
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th>ID</th><th>Название</th><th>Ответственный</th><th>Канал</th><th>Статус</th><th class="right">Сумма</th><th>Дата</th></tr>';
+      const tbody = document.createElement('tbody');
+      deals.forEach(d=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${d.id}</td>
+          <td>${d.name}</td>
+          <td>${d.owner}</td>
+          <td>${d.channel}</td>
+          <td><span class="stage ${d.stage==='Won'?'won': d.stage==='Lost'?'lost':''}">${d.stage}</span></td>
+          <td class="right">${fmtMoney(d.amount)}</td>
+          <td>${d.date}</td>`;
+        tbody.appendChild(tr);
+      });
+      table.appendChild(thead); table.appendChild(tbody);
+      const info = document.createElement('div');
+      info.className='row'; info.style.justifyContent='space-between'; info.style.marginTop='8px'; info.style.fontSize='12px'; info.style.color='var(--muted)';
+      const left = document.createElement('span'); left.textContent = `Показано: ${deals.length} из ${dealsAll.length}`;
+      const mid = document.createElement('div'); mid.className='row';
+      const prev = document.createElement('button'); prev.className='btn'; prev.textContent='Назад'; prev.disabled = state.page<=1;
+      prev.onclick=()=>{ state.page--; saveState('page'); renderWidgets(); };
+      const pageTxt = document.createElement('span'); pageTxt.style.alignSelf='center'; pageTxt.textContent = `Стр. ${state.page}/${pages}`;
+      const next = document.createElement('button'); next.className='btn'; next.textContent='Вперёд'; next.disabled = state.page>=pages;
+      next.onclick=()=>{ state.page++; saveState('page'); renderWidgets(); };
+      mid.append(prev, pageTxt, next);
+      const right = document.createElement('button'); right.className='btn'; right.textContent='Экспорт CSV';
+      right.onclick=()=> exportCSV('top-deals.csv', deals);
+      info.append(left, mid, right);
+      body.append(table, info);
+      card.append(head, body);
+      return card;
+    },
+    picker(){
+      const card = document.createElement('div'); card.className='card';
+      const head = document.createElement('div'); head.className='head';
+      const title = document.createElement('span'); title.textContent='Добавить виджет';
+      const close = createClose(()=>{ state.widgetOrder = state.widgetOrder.filter(x=>x!=='picker'); saveState('widgetOrder'); renderWidgets(); });
+      head.append(title, close);
+      const body = document.createElement('div'); body.className='body';
+      ['+ Пустой KPI','+ График по менеджеру','+ Тепловая карта звонков'].forEach(txt=>{
+        const b = document.createElement('button'); b.className='btn'; b.style.width='100%'; b.style.margin='6px 0'; b.textContent = txt;
+        body.appendChild(b);
+      });
+      card.append(head, body);
+      return card;
+    }
+  };
+
+  widgetContainer.innerHTML='';
+  state.widgetOrder.forEach(id=>{
+    const host = document.createElement('div');
+    host.title = 'Перетащите, чтобы изменить порядок';
+    enableDragFor(host, id, 'widget');
+    host.appendChild(widgets[id]());
+    widgetContainer.appendChild(host);
+  });
+}
+
+// ======== Events ========
+document.querySelectorAll('.period').forEach(btn=> btn.addEventListener('click', ()=>{
+  state.period = btn.dataset.p; saveState('period'); renderAll();
+}));
+channelSel.addEventListener('change', ()=>{ state.channel = channelSel.value; saveState('channel'); renderAll(); });
+queryInput.addEventListener('input', ()=>{ state.query = queryInput.value; saveState('query'); renderWidgets(); });
+thresholdInput.addEventListener('change', ()=>{ state.threshold = Number(thresholdInput.value)||0; saveState('threshold'); renderKPIs(); });
+document.getElementById('resetLayout').addEventListener('click', ()=>{
+  state.kpiOrder = ['rev','leads','won','winrate','nps'];
+  state.widgetOrder = ['revenue','channels','funnel','deals','picker'];
+  saveState('kpiOrder'); saveState('widgetOrder'); renderAll();
+});
+document.getElementById('toggleTheme').addEventListener('click', ()=> setTheme(state.theme==='dark'?'light':'dark'));
+document.getElementById('exportAll').addEventListener('click', ()=>{
+  const {data, dataFiltered} = filteredData();
+  const rows = allDeals(data, dataFiltered, state.query);
+  exportCSV('crm-deals.csv', rows);
+});
+
+// ======== Initial render ========
+function renderAll(){
+  const d = filteredData();
+  renderHeader(d);
+  renderKPIs();
+  renderWidgets();
+}
+renderAll();
+</script>
+</body>
+</html>

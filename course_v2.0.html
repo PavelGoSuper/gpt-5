@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Интерактивный курс по физике — v6 (карточка 2‑го закона Ньютона)</title>
+<style>
+  :root{ --bg:#0b1324; --panel:#121b33; --panel-2:#0f1730; --text:#eaf1ff; --muted:#9fb3ff; --accent:#6ea8ff; --good:#20c997; --bad:#ff6b6b; --yellow:#ffd166; --shadow:0 10px 30px rgba(0,0,0,.35); --radius:16px }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{ margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial; color:var(--text);
+        background: radial-gradient(1200px 800px at 80% -10%,#1b2550 0%, rgba(27,37,80,0) 60%),
+                    radial-gradient(900px 600px at -10% 10%,#0f3579 0, rgba(15,53,121,0) 60%),
+                    var(--bg);
+        display:flex; flex-direction:column }
+  header{ position:sticky; top:0; z-index:10; background:linear-gradient(180deg, rgba(11,19,36,.9), rgba(11,19,36,.6)); backdrop-filter: blur(6px); border-bottom:1px solid rgba(255,255,255,.08) }
+  .wrap{max-width:1366px; margin:0 auto; padding:16px}
+  .title{display:flex; align-items:center; gap:14px}
+  .logo{width:36px; height:36px; border-radius:10px; background:conic-gradient(from 220deg at 50% 50%, #6ea8ff, #20c997, #ffd166, #6ea8ff); box-shadow:var(--shadow)}
+  .title h1{font-size:18px; margin:0}
+  .subtitle{color:var(--muted); font-size:13px}
+  main{flex:1}
+  .grid{display:grid; grid-template-columns: 320px 1fr; gap:16px}
+  @media (max-width: 980px){ .grid{grid-template-columns: 1fr} }
+  .sidebar{background:var(--panel); border:1px solid rgba(255,255,255,.07); border-radius:var(--radius); padding:12px; box-shadow:var(--shadow)}
+  .unit{display:flex; gap:10px; align-items:center; padding:10px; border-radius:12px; cursor:pointer; border:1px solid rgba(255,255,255,.06)}
+  .unit:hover{background:rgba(255,255,255,.04)}
+  .unit.active{outline:2px solid var(--accent); background:rgba(110,168,255,.07)}
+  .unit small{color:var(--muted)}
+  .badge{margin-left:auto; font-size:12px; color:#0d1222; background:var(--yellow); padding:2px 8px; border-radius:99px}
+  .card{background:var(--panel); border:1px solid rgba(255,255,255,.07); border-radius:var(--radius); box-shadow:var(--shadow)}
+  .card h2{margin:0 0 8px; font-size:20px}
+  .card .head{padding:16px; border-bottom:1px dashed rgba(255,255,255,.08)}
+  .card .body{padding:16px; display:grid; gap:16px}
+  .flex{display:flex; gap:16px; flex-wrap:wrap}
+  .pane{flex:1 1 360px; background:var(--panel-2); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px}
+  .pane h3{margin:2px 0 10px; font-size:16px}
+  .pane p{margin:6px 0; color:var(--muted); font-size:14px}
+  canvas{display:block; width:100%; height:260px; background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border-radius:10px; border:1px solid rgba(255,255,255,.08)}
+  #graph1, #graph2{height:200px}
+  .controls{display:grid; grid-template-columns: 1fr 120px; gap:10px; align-items:center}
+  .controls label{font-size:14px; color:var(--muted)}
+  .controls input[type=range]{width:100%}
+  .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#0a1b38; border:1px solid rgba(255,255,255,.12); padding:2px 6px; border-radius:6px}
+  .btn{appearance:none; border:none; padding:10px 14px; border-radius:12px; background:linear-gradient(180deg, #2a5de0, #1747c7); color:white; cursor:pointer; box-shadow:var(--shadow); font-weight:600}
+  .btn:active{transform:translateY(1px)}
+  .btn.alt{background:linear-gradient(180deg, #23b47e, #159466)}
+  .btn.ghost{background:transparent; border:1px solid rgba(255,255,255,.2)}
+  .hint{font-size:12px; color:var(--muted)}
+  .quiz{display:grid; gap:8px}
+  .quiz .q{font-weight:600}
+  .choice{display:flex; gap:8px; align-items:center; padding:10px; border:1px solid rgba(255,255,255,.1); border-radius:10px; cursor:pointer}
+  .choice:hover{background:rgba(255,255,255,.04)}
+  .choice.correct{outline:2px solid var(--good)}
+  .choice.wrong{outline:2px solid var(--bad)}
+  .result{font-weight:700}
+  footer{color:var(--muted); font-size:12px; padding:12px 16px; text-align:center; border-top:1px solid rgba(255,255,255,.08)}
+  .pill{display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.06); padding:6px 10px; border-radius:999px; font-size:12px; border:1px solid rgba(255,255,255,.08)}
+  .tog{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted)}
+
+  /* Инфографика */
+  .infobox{position:relative; overflow:hidden; border:1px dashed rgba(255,255,255,.15); border-radius:12px; padding:12px; background:rgba(255,255,255,.03)}
+  .steps{display:grid; grid-template-columns: repeat(4, 1fr); gap:12px}
+  .step{border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:10px; min-height:110px; display:grid; grid-template-rows:auto 1fr auto; background:rgba(255,255,255,.02)}
+  .step h4{margin:0 0 6px; font-size:14px}
+  .step p{margin:4px 0 0; font-size:13px; color:var(--muted)}
+  .ico{width:32px; height:32px; border-radius:8px; display:grid; place-items:center; font-weight:700}
+  .ico.blue{background:#193c7a} .ico.red{background:#5a1a2a} .ico.green{background:#165d4a} .ico.yellow{background:#6a5e19}
+  .timeline{position:absolute; left:12px; right:12px; bottom:6px; height:3px; background:rgba(255,255,255,.12); border-radius:4px; overflow:hidden}
+  .timeline .bar{height:100%; width:0%; background:linear-gradient(90deg, #6ea8ff, #20c997, #ffd166)}
+  .infobox.playing .timeline .bar{animation: fillbar 4.5s linear forwards}
+  @keyframes fillbar{ from{width:0%} to{width:100%} }
+  .step{opacity:.25; filter:saturate(.6)}
+  .infobox.playing .step{opacity:1; filter:saturate(1)}
+  .infobox.playing .step:nth-child(1){animation: appear .6s .1s both}
+  .infobox.playing .step:nth-child(2){animation: appear .6s 1.3s both}
+  .infobox.playing .step:nth-child(3){animation: appear .6s 2.5s both}
+  .infobox.playing .step:nth-child(4){animation: appear .6s 3.7s both}
+  @keyframes appear{ from{opacity:.25; transform:translateY(6px)} to{opacity:1; transform:none} }
+  .drawline{stroke-dasharray:120; stroke-dashoffset:120}
+  .infobox.playing .drawline{animation: draw 1.2s ease forwards}
+  @keyframes draw{ to{stroke-dashoffset:0} }
+
+  /* Карточка закона Ньютона */
+  .lawcard{margin-top:12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:14px}
+  .lawcard h4{margin:0 0 8px; font-size:16px}
+  .eq{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:15px; background:#0a1b38; border:1px solid rgba(255,255,255,.12); padding:8px 10px; border-radius:8px; display:inline-block}
+  .eq .hl{background:linear-gradient(180deg, rgba(32,201,151,.15), rgba(32,201,151,0)); border-radius:4px; padding:0 4px; transition: box-shadow .25s}
+  .eq.flash .hl{ box-shadow:0 0 0 9999px rgba(32,201,151,.08) inset }
+  .lawgrid{display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px}
+  .lawgrid .cell{background:rgba(255,255,255,.02); border:1px dashed rgba(255,255,255,.1); border-radius:10px; padding:8px; font-size:14px}
+  .note{color:var(--muted); font-size:13px; margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="title">
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>Интерактивный курс по физике — v6</h1>
+        <div class="subtitle">Два урока + инфографика и карточка «2-й закон Ньютона»</div>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:8px; align-items:center">
+        <span class="pill">Прогресс: <b id="progress">0%</b></span>
+        <button class="btn ghost" id="reset">Сбросить прогресс</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="grid">
+    <aside class="sidebar" id="sidebar">
+      <div class="unit active" data-target="lesson1" tabindex="0" role="button">
+        <div style="width:32px; height:32px; background:#2540a6; border-radius:10px; display:grid; place-items:center">1</div>
+        <div>
+          <div><b>Урок 1.</b> Аркада движения</div>
+          <small>Спринт / Торможение / Разгон</small>
+        </div>
+        <span class="badge">обновлён</span>
+      </div>
+      <div class="unit" data-target="lesson2" tabindex="0" role="button">
+        <div style="width:32px; height:32px; background:#265e5a; border-radius:10px; display:grid; place-items:center">2</div>
+        <div>
+          <div><b>Урок 2.</b> Силы и трение</div>
+          <small>2‑й закон Ньютона</small>
+        </div>
+      </div>
+    </aside>
+
+    <section id="content">
+      <!-- Урок 1 (сокращённо — без правок) -->
+      <article class="card" id="lesson1">
+        <div class="head">
+          <h2>Урок 1. Аркада: скорость, ускорение и бонусы</h2>
+          <div class="hint">x = x₀ + v₀·t + ½·(a+a★)·t²; v(t)=v₀ + (a+a★)·t</div>
+        </div>
+        <div class="body">
+          <div class="flex">
+            <div class="pane">
+              <h3>Симуляция</h3>
+              <canvas id="sim1" width="1000" height="260"></canvas>
+              <div class="controls" style="margin-top:10px">
+                <label>Режим миссии
+                  <select id="mode1"><option value="sprint" selected>Спринт</option><option value="brake">Торможение</option><option value="accel">Разгон</option></select>
+                </label><div class="kbd" id="mode1v">sprint</div>
+              </div>
+              <div class="controls">
+                <label>Цвет машины
+                  <select id="carColor">
+                    <option value="#5fa8ff" selected>Синяя</option><option value="#ff6b6b">Красная</option>
+                    <option value="#20c997">Зелёная</option><option value="#b36bff">Фиолетовая</option>
+                  </select>
+                </label><div class="kbd" id="carColorV">#5fa8ff</div>
+              </div>
+              <div class="controls"><label>Начальная скорость v₀ (м/с)<input id="v0" type="range" min="-12" max="12" step="0.5" value="4" /></label><div class="kbd" id="v0v">4</div></div>
+              <div class="controls"><label>Ускорение a (м/с²)<input id="acc" type="range" min="-6" max="6" step="0.25" value="0.5" /></label><div class="kbd" id="accv">0.5</div></div>
+              <div class="controls"><label>Масса m (кг)<input id="mass1" type="range" min="1" max="15" step="1" value="3" /></label><div class="kbd" id="mass1v">3</div></div>
+              <div class="controls"><label>Длительность t (с)<input id="time" type="range" min="2" max="20" step="0.5" value="8" /></label><div class="kbd" id="timev">8</div></div>
+              <div class="tog"><label><input type="checkbox" id="pauseOnDrag" checked /> Пауза при перетаскивании</label><label><input type="checkbox" id="autoStart1" /> Автозапуск после изменений</label></div>
+              <div class="pane" style="background:rgba(255,255,255,.03); border-style:dashed; margin-top:8px">
+                <h3 style="margin-top:0">🎯 Миссия и бонусы</h3>
+                <div class="controls"><label>Цель XₜARGET (м)<input id="goalX" type="range" min="10" max="140" step="1" value="50" /></label><div class="kbd" id="goalXv">50</div></div>
+                <div class="controls"><label>Лимит времени (с)<input id="goalT" type="range" min="2" max="20" step="0.5" value="6" /></label><div class="kbd" id="goalTv">6</div></div>
+                <div class="controls"><label>Кол-во бонусов ⭐<input id="bonusN" type="range" min="0" max="6" step="1" value="3" /></label><div class="kbd" id="bonusNv">3</div></div>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+                  <button class="btn" id="play1">▶ Запустить</button>
+                  <button class="btn ghost" id="pause1">⏸ Пауза</button>
+                  <button class="btn ghost" id="reset1">⟲ Сброс</button>
+                  <button class="btn alt" id="randomMission">🎲 Случайная миссия</button>
+                  <button class="btn ghost" id="clearScores">🧹 Очистить рекорды</button>
+                </div>
+                <p class="hint" id="s1readout">x(t)=…; v(t)=…; Eₖ=…; ⭐=0</p>
+                <div class="result" id="missionResult" aria-live="polite"></div>
+              </div>
+            </div>
+            <div class="pane">
+              <h3>Разбор и табло</h3>
+              <canvas id="graph1" width="1000" height="200"></canvas>
+              <div style="margin-top:10px">
+                <table style="width:100%; border-collapse:separate; border-spacing:0 6px" id="scoreTable">
+                  <thead><tr style="color:var(--muted); font-size:12px">
+                    <th style="text-align:left">#</th><th style="text-align:left">Время</th><th style="text-align:left">Режим</th>
+                    <th style="text-align:left">Дистанция</th><th style="text-align:left">⭐</th><th style="text-align:left">Цвет</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="pane">
+            <h3>Мини‑квиз</h3>
+            <div class="quiz" data-quiz="q1">
+              <div class="q">В «Торможении» при a &lt; 0 и v₀ &gt; 0, что с v(t) и Eₖ(t)?</div>
+              <label class="choice" data-correct="true"><input type="radio" name="q1"/> v(t) убывает линейно; Eₖ падает быстрее (квадратично по v)</label>
+              <label class="choice" data-correct="false"><input type="radio" name="q1"/> v(t) растёт, Eₖ постоянна</label>
+              <label class="choice" data-correct="false"><input type="radio" name="q1"/> Оба графика горизонтальны</label>
+              <button class="btn alt" data-check>Проверить</button>
+              <div class="result" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Урок 2 -->
+      <article class="card" id="lesson2" style="display:none">
+        <div class="head"><h2>Урок 2. Силы, масса и трение — 2‑й закон Ньютона</h2></div>
+        <div class="body">
+          <div class="flex">
+            <div class="pane">
+              <h3>Брусок на столе</h3>
+              <canvas id="sim2" width="900" height="240"></canvas>
+              <div class="controls" style="margin-top:10px">
+                <label>Масса m (кг)<input id="m2" type="range" min="1" max="10" step="1" value="3" /></label><div class="kbd" id="m2v">3</div>
+              </div>
+              <div class="controls"><label>Тяга F (Н)<input id="f2" type="range" min="0" max="50" step="1" value="15" /></label><div class="kbd" id="f2v">15</div></div>
+              <div class="controls"><label>Коэффициент трения μ<input id="mu2" type="range" min="0" max="0.8" step="0.02" value="0.2" /></label><div class="kbd" id="mu2v">0.20</div></div>
+              <div style="display:flex; gap:8px; align-items:center; margin-top:6px">
+                <button class="btn" id="play2">▶ Запустить</button>
+                <button class="btn ghost" id="pause2">⏸ Пауза</button>
+                <button class="btn ghost" id="reset2">⟲ Сброс</button>
+              </div>
+              <p class="hint" id="s2readout">Fт = … Н, a = … м/с²</p>
+
+              <div id="info2" class="infobox" aria-live="polite">
+                <div class="steps">
+                  <div class="step"><div class="ico blue">1</div><h4>Считаем трение</h4>
+                    <svg viewBox="0 0 120 30" width="100%" height="36"><line x1="5" y1="20" x2="115" y2="20" stroke="#6ea8ff" stroke-width="3" class="drawline"/><text x="8" y="15" fill="#9fb3ff" font-size="10">Fₜ = μ·m·g</text></svg>
+                    <p>Если μ, m или g ↑, то трение ↑.</p>
+                  </div>
+                  <div class="step"><div class="ico red">2</div><h4>Сравниваем силы</h4>
+                    <svg viewBox="0 0 120 30" width="100%" height="36"><polygon points="10,15 28,15 28,10 40,20 28,30 28,25 10,25" fill="#5fa8ff"/><polygon points="110,15 92,15 92,10 80,20 92,30 92,25 110,25" fill="#ff6b6b"/></svg>
+                    <p><b>F ⩽ Fₜ</b> → стоит, <b>F &gt; Fₜ</b> → поедет.</p>
+                  </div>
+                  <div class="step"><div class="ico green">3</div><h4>Ускорение</h4>
+                    <svg viewBox="0 0 120 30" width="100%" height="36"><polyline points="10,25 40,24 70,20 110,10" fill="none" stroke="#20c997" stroke-width="3" class="drawline"/></svg>
+                    <p>a = (F − Fₜ)/m (если F &gt; Fₜ).</p>
+                  </div>
+                  <div class="step"><div class="ico yellow">4</div><h4>Скорость v(t)</h4>
+                    <svg viewBox="0 0 120 30" width="100%" height="36"><polyline points="10,25 110,8" fill="none" stroke="#ffd166" stroke-width="3" class="drawline"/></svg>
+                    <p>Наклон графика равен a.</p>
+                  </div>
+                </div>
+                <div class="timeline"><div class="bar"></div></div>
+              </div>
+            </div>
+
+            <div class="pane">
+              <h3>Векторы сил и график v(t)</h3>
+              <canvas id="graph2" width="900" height="200"></canvas>
+
+              <!-- Карточка 2-го закона Ньютона -->
+              <div class="lawcard" id="lawcard">
+                <h4>2‑й закон Ньютона</h4>
+                <div class="eq" id="eqMain">F<span class="sub">рез</span> = <span class="hl">m · a</span></div>
+                <div class="lawgrid">
+                  <div class="cell">
+                    <div class="eq" id="eqAx">a = (F − F<span class="sub">т</span>)/m = <b><span id="aval">0</span></b> м/с²</div>
+                  </div>
+                  <div class="cell">
+                    <div class="eq" id="eqFt">F<span class="sub">т</span> = μ·m·g = <b><span id="ftval">0</span></b> Н</div>
+                  </div>
+                </div>
+                <div class="note" id="lawNote">
+                  Ускорение пропорционально суммарной силе и обратно пропорционально массе.
+                  Больше сила — быстрее разгон. Больше масса — труднее разогнать.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pane">
+            <h3>Мини‑квиз</h3>
+            <div class="quiz" data-quiz="q2">
+              <div class="q">При m=2 кг, μ=0.3, g≈9.8 м/с², чему ≈ Fₜ?</div>
+              <label class="choice" data-correct="false"><input type="radio" name="q2"/> ≈ 2.9 Н</label>
+              <label class="choice" data-correct="true"><input type="radio" name="q2"/> ≈ 5.9 Н</label>
+              <label class="choice" data-correct="false"><input type="radio" name="q2"/> ≈ 9.8 Н</label>
+              <button class="btn alt" data-check>Проверить</button>
+              <div class="result" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+</main>
+
+<footer>© 2025 • v6: инфографика + карточка закона Ньютона (динамическая).</footer>
+
+<script>
+// === общие ===
+const Progress={ key:'physics_demo_progress_v6', get(){ try{return JSON.parse(localStorage.getItem(this.key)||'{}')}catch{return{}} }, set(d){ localStorage.setItem(this.key, JSON.stringify(d)) }, update(part,done=true){ const p=this.get(); p[part]=done; this.set(p); renderProgress() } };
+function renderProgress(){ const p=Progress.get(); const total=4; const done=['l1sim','l1quiz','l2sim','l2quiz'].filter(k=>p[k]).length; document.getElementById('progress').textContent=Math.round(done/total*100)+'%'}
+renderProgress();
+document.getElementById('reset').addEventListener('click',()=>{ localStorage.removeItem(Progress.key); renderProgress(); alert('Прогресс сброшен') })
+
+const sidebar=document.getElementById('sidebar'); const content=document.getElementById('content');
+sidebar.addEventListener('click',(e)=>{ const unit=e.target.closest('.unit'); if(!unit) return; [...sidebar.querySelectorAll('.unit')].forEach(u=>u.classList.remove('active')); unit.classList.add('active'); const id=unit.dataset.target; [...content.children].forEach(sec=>sec.style.display=(sec.id===id)?'block':'none'); });
+
+// === урок 1 (минимально, как раньше) ===
+const sim1=document.getElementById('sim1'); const g1=sim1.getContext('2d');
+let mode1='sprint'; let v0=4, a1=0.5, mass1=3, T1=8, goalX=50, goalT=6, bonusN=3, carColor='#5fa8ff';
+function qsel(id){return document.getElementById(id)}
+function updLabels1(){ qsel('mode1v').textContent=mode1; qsel('carColorV').textContent=carColor; qsel('v0v').textContent=v0; qsel('accv').textContent=a1; qsel('mass1v').textContent=mass1; qsel('timev').textContent=T1; qsel('goalXv').textContent=goalX; qsel('goalTv').textContent=goalT; qsel('bonusNv').textContent=bonusN }
+updLabels1();
+// (Чтобы не раздувать этот пример, рендер аркады укорачиваю)
+if(g1){
+  function clear1(){ g1.fillStyle='rgba(255,255,255,.06)'; g1.fillRect(0,0,sim1.width,sim1.height) }
+  clear1();
+  for(const id of ['v0','acc','time','mass1','goalX','goalT','bonusN']){ const el=qsel(id); el.addEventListener('input',()=>{ v0=+qsel('v0').value; a1=+qsel('acc').value; T1=+qsel('time').value; mass1=+qsel('mass1').value; goalX=+qsel('goalX').value; goalT=+qsel('goalT').value; bonusN=+qsel('bonusN').value; updLabels1(); }) }
+  qsel('carColor').addEventListener('change',()=>{ carColor=qsel('carColor').value; updLabels1() })
+}
+
+// === урок 2: симуляция + график + карточка закона ===
+const sim2=document.getElementById('sim2');
+if(sim2){
+const g2=sim2.getContext('2d'); let m2=+qsel('m2').value, F2=+qsel('f2').value, mu2=+qsel('mu2').value; let t2=0,v2=0,x2=0,playing2=false; const g=9.8;
+function drawScene2(){ const W=sim2.width,H=sim2.height; g2.clearRect(0,0,W,H); g2.fillStyle='rgba(255,255,255,.08)'; g2.fillRect(0,H-40,W,3); const bx=40+x2*10, by=H-92; g2.fillStyle='rgba(0,0,0,.35)'; g2.beginPath(); g2.ellipse(bx+50,H-50,50,10,0,0,Math.PI*2); g2.fill(); const grd=g2.createLinearGradient(0,by,0,by+60); grd.addColorStop(0,'#23b47e'); grd.addColorStop(1,'#15785a'); g2.fillStyle=grd; g2.strokeStyle='rgba(255,255,255,.35)'; g2.lineWidth=2; g2.beginPath(); g2.roundRect(bx,by,100,60,12); g2.fill(); g2.stroke(); const Ft=mu2*m2*g; const ax=(F2>Ft)?(F2-Ft)/m2:0; drawArrow(g2,bx+100,by+30,bx+100+F2*1.2,by+30,'#5fa8ff'); drawArrow(g2,bx,by+30,bx-Ft*1.2,by+30,'#ff6b6b'); drawArrow(g2,bx+50,by+60,bx+50,by+60+m2*g*0.8,'#ffd166'); drawArrow(g2,bx+50,by,bx+50,by-m2*g*0.8,'#c6ffdd'); qsel('s2readout').textContent=`Fₜ = μ·m·g = ${mu2.toFixed(2)}·${m2}·9.8 ≈ ${(Ft).toFixed(1)} Н,  a = ${(ax).toFixed(2)} м/с²`; updateLawCard() }
+function drawArrow(ctx,x1,y1,x2,y2,color){ ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); const ang=Math.atan2(y2-y1,x2-x1); const L=10; ctx.beginPath(); ctx.moveTo(x2,y2); ctx.lineTo(x2 - L*Math.cos(ang-0.5), y2 - L*Math.sin(ang-0.5)); ctx.lineTo(x2 - L*Math.cos(ang+0.5), y2 - L*Math.sin(ang+0.5)); ctx.closePath(); ctx.fill() }
+const gc2=document.getElementById('graph2'); const g21=gc2.getContext('2d'); function drawGraph2(){ const W=gc2.width,H=gc2.height; g21.clearRect(0,0,W,H); g21.strokeStyle='rgba(255,255,255,.12)'; g21.beginPath(); for(let i=1;i<6;i++){ g21.moveTo(0,i*H/6); g21.lineTo(W,i*H/6) } g21.stroke(); g21.strokeStyle='rgba(255,255,255,.35)'; g21.beginPath(); g21.moveTo(40,H-30); g21.lineTo(W-10,H-30); g21.moveTo(40,H-30); g21.lineTo(40,10); g21.stroke(); g21.strokeStyle='#5fa8ff'; g21.beginPath(); const T=8,N=120; for(let i=0;i<=N;i++){ const t=i/N*T; const Ft=mu2*m2*g; const a=(F2>Ft)?(F2-Ft)/m2:0; const v=a*t; const px=40+(W-60)*(t/T); const py=(H-40) - ((v+5)/(Math.max(5,Math.abs(v)+5)))*(H-60); if(i===0) g21.moveTo(px,py); else g21.lineTo(px,py) } g21.stroke() }
+function updateLawCard(){ const Ft=mu2*m2*g; const Fres=F2-Ft; const a=(Fres>0)?Fres/m2:0; qsel('ftval').textContent=Ft.toFixed(1); qsel('aval').textContent=a.toFixed(2); const eqMain=qsel('eqMain'); eqMain.classList.remove('flash'); void eqMain.offsetWidth; eqMain.classList.add('flash'); const note=qsel('lawNote'); note.textContent = (Fres>0)? 'Суммарная сила направлена вправо: тело разгоняется. Чем больше разность F−Fₜ, тем круче наклон v(t).' : 'Суммарная сила не тянет вперёд: тело остаётся на месте (a=0). Увеличьте F или уменьшите μ/m.' }
+let raf2, t2start; function tick2(){ if(!playing2){ cancelAnimationFrame(raf2); return } const Ft=mu2*m2*g; const a=(F2>Ft)?(F2-Ft)/m2:0; v2+=a*(1/60); x2+=v2*(1/60); t2+=1/60; drawScene2(); drawGraph2(); if(t2>8){ playing2=false; Progress.update('l2sim',true) } raf2=requestAnimationFrame(tick2) }
+function reset2(){ t2=0; v2=0; x2=0; playing2=false; drawScene2(); drawGraph2(); setInfo(false) }
+for(const [id,setter] of [['m2',v=>m2=v],['f2',v=>F2=v],['mu2',v=>mu2=v]]){ const el=qsel(id); el.addEventListener('input',()=>{ setter(+el.value); qsel(id+'v').textContent = (id==='mu2'? (+el.value).toFixed(2) : +el.value); drawScene2(); drawGraph2() }) }
+qsel('play2').addEventListener('click',()=>{ if(!playing2){ playing2=true; raf2=requestAnimationFrame(tick2); setInfo(true) } })
+qsel('pause2').addEventListener('click',()=> playing2=false)
+qsel('reset2').addEventListener('click', reset2)
+function setInfo(on){ const box=qsel('info2'); if(!box) return; box.classList.remove('playing'); void box.offsetWidth; if(on){ box.classList.add('playing'); } }
+drawScene2(); drawGraph2();
+}
+
+function initQuiz(name, idx){ const root=document.querySelector(`.quiz[data-quiz="${name}"]`); if(!root) return; const result=root.querySelector('.result'); root.querySelector('[data-check]').addEventListener('click',()=>{ const choice=root.querySelector('input[type=radio]:checked'); if(!choice){ result.textContent='Выберите ответ'; result.style.color='var(--yellow)'; return } const label=choice.closest('.choice'); const ok=label.dataset.correct==='true'; [...root.querySelectorAll('.choice')].forEach(c=>c.classList.remove('correct','wrong')); label.classList.add(ok?'correct':'wrong'); result.textContent= ok? 'Верно! 🎉' : 'Неверно. Попробуйте ещё раз.'; result.style.color = ok? 'var(--good)' : 'var(--bad)'; if(ok) Progress.update(idx===1?'l1quiz':'l2quiz',true) }) }
+initQuiz('q1',1); initQuiz('q2',2);
+</script>
+</body>
+</html>

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GPT‑5 Детский Квест — Premium Static</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0b1020;
+    --panel: #0f1730b0;
+    --ink: #e9edf6;
+    --muted: #97a0b6;
+    --gold: #f6d365;
+    --brand1: #ff4d87;
+    --brand2: #7e7dff;
+    --radius: 20px;
+    --shadow-lg: 0 10px 30px -10px rgba(8,14,35,.6), inset 0 1px 0 rgba(255,255,255,.045);
+    --shadow-sm: 0 6px 16px -6px rgba(8,14,35,.55);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    color:var(--ink);
+    background: radial-gradient(1200px 800px at 50% -10%, rgba(126,125,255,.18), transparent),
+                radial-gradient(1000px 800px at 80% 10%, rgba(255,77,135,.15), transparent),
+                radial-gradient(1000px 800px at 20% 100%, rgba(246,211,101,.12), transparent),
+                var(--bg);
+    font:16px/1.55 "Manrope", system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+    overflow-x:hidden;
+    display:flex; align-items:center; justify-content:center; min-height:100vh;
+  }
+
+  .container{max-width:1100px;width:100%;padding:28px 16px 44px}
+
+  .header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .emblem{height:48px;width:48px;display:grid;place-items:center;border-radius:16px;
+          background: linear-gradient(135deg, var(--brand1), var(--brand2));
+          color:#fff;font-size:26px; box-shadow: var(--shadow-sm)}
+  h1{font-size:clamp(22px,3.4vw,32px);margin:0;font-weight:900;
+     letter-spacing:.2px;background: linear-gradient(180deg, #fff, #cdd4f1 55%, #aab3da);
+     -webkit-background-clip: text; background-clip:text; color:transparent}
+  .crumbs{margin:4px 0 0;font-size:12px;color:var(--muted)}
+
+  .pillbar{display:flex;gap:10px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;
+        border:1px solid rgba(255,255,255,.08); background: #0c1430a6;
+        box-shadow: var(--shadow-sm); font-size:12px; font-weight:800; color:#dfe3f3}
+
+  .card{border-radius:var(--radius); padding:18px;
+        background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)) , var(--panel);
+        border:1px solid rgba(255,255,255,.08); backdrop-filter: blur(14px);
+        box-shadow: var(--shadow-lg);}
+
+  .progress{display:flex;align-items:center;gap:12px;margin:2px 0 16px}
+  .bar{flex:1;height:14px;border-radius:999px;background:rgba(255,255,255,.06);
+       border:1px solid rgba(255,255,255,.09); overflow:hidden; position:relative}
+  .bar i{display:block;height:100%;width:0%;
+         background: linear-gradient(90deg, var(--brand1), var(--brand2));
+         box-shadow: 0 0 20px rgba(126,125,255,.55);
+         transition: width .5s cubic-bezier(.2,.8,.2,1)}
+  .bar::after{content:""; position:absolute; inset:0;
+              background: radial-gradient(200px 60px at var(--x,0%) 50%, rgba(255,255,255,.35), transparent 60%);
+              mix-blend-mode:overlay; pointer-events:none}
+  .pct{min-width:48px;text-align:right;font-size:13px;font-weight:900;color:#d9def9}
+
+  .section{border-radius:var(--radius); padding:16px; margin:12px 0;
+           border:1px solid rgba(255,255,255,.08);
+           background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));}
+  .section h2{display:flex;align-items:center;gap:10px;margin:0 0 12px;
+              font-size:18px;font-weight:900;color:#eef2ff}
+  .row{display:grid;gap:14px}
+  @media (min-width: 900px){ .row{grid-template-columns:1fr 1fr} }
+
+  label{font-size:12px;color:#c9d0e9;font-weight:800;display:block;margin:6px 0 6px}
+  input[type=text], input[type=number], input[type=password]{
+    width:100%;height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.09);
+    padding:0 14px;background:rgba(10,16,40,.65);color:#eaeefe;
+    outline:none; box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+    transition: box-shadow .2s, border-color .2s;
+  }
+  input[type=text]:focus, input[type=number]:focus, input[type=password]:focus{
+    border-color: rgba(246,211,101,.55);
+    box-shadow: 0 0 0 4px rgba(246,211,101,.15);
+  }
+  input[type=checkbox]{transform:scale(1.15); accent-color:#bba3ff}
+
+  .switch{display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(12,18,40,.55)}
+
+  .muted{font-size:12px;color:var(--muted)}
+
+  .btn{
+    height:44px;padding:0 16px;border-radius:14px;border:1px solid rgba(255,255,255,.08);
+    font-weight:900; letter-spacing:.2px; cursor:pointer;
+    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+    color:#fff; position:relative; isolation:isolate;
+    transition: transform .06s, box-shadow .2s, border-color .2s, background .3s;
+    box-shadow: var(--shadow-sm);
+  }
+  .btn.primary{background: linear-gradient(90deg, var(--brand1), var(--brand2)); border-color: transparent;}
+  .btn.outline{background: rgba(12,18,40,.55)}
+  .btn:hover{ box-shadow: 0 10px 24px -8px rgba(126,125,255,.55); transform: translateY(-1px) }
+  .btn:active{ transform: translateY(0) scale(.99) }
+  .btn[disabled]{opacity:.6; cursor:not-allowed}
+
+  .choices{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:6px}
+  .choice{height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.08);
+          background: rgba(12,18,40,.55); color:#e9edf6; font-weight:800;
+          cursor:pointer; display:flex;align-items:center;justify-content:center;
+          transition: transform .06s, box-shadow .2s, border-color .2s, background .3s}
+  .choice:hover{ box-shadow: inset 0 0 0 1px rgba(255,255,255,.15), 0 6px 18px -8px rgba(126,125,255,.45) }
+  .choice.active{
+    background: linear-gradient(90deg, rgba(246,211,101,.18), rgba(255,255,255,.04));
+    border-color: rgba(246,211,101,.55); color:#fff;
+    box-shadow: 0 8px 20px -8px rgba(246,211,101,.55);
+  }
+
+  .icons{font-size:34px;letter-spacing:.12em;margin-bottom:10px;text-align:center}
+  .icons span{display:inline-block;opacity:0;transform:translateY(8px) scale(.9);animation:pop .5s forwards}
+  .icons span:nth-child(n){animation-delay: calc(var(--i) * 70ms)}
+  @keyframes pop{to{opacity:1;transform:none}}
+
+  .album-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+  @media (min-width:600px){ .album-grid{grid-template-columns:repeat(6,1fr)}}
+  @media (min-width:900px){ .album-grid{grid-template-columns:repeat(8,1fr)}}
+  .sticker{padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.08);
+           background: rgba(12,18,40,.55); text-align:center; box-shadow: var(--shadow-sm)}
+  .st-title{font-size:12px;color:#cbd2ea;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .center{text-align:center}
+  .hint{font-size:12px;color:#aeb6d3;margin-top:6px}
+  .foot{margin-top:10px;color:#9fa8c9;font-size:12px;text-align:center}
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);padding:12px 16px;
+         border-radius:999px;background:rgba(255,255,255,.08);color:#fff;font-weight:900;
+         font-size:13px;border:1px solid rgba(255,255,255,.12);backdrop-filter: blur(10px);
+         box-shadow: var(--shadow-sm); opacity:0; pointer-events:none}
+  .toast.show{opacity:1;animation:fadeout 2.2s .6s forwards}
+  @keyframes fadeout{to{opacity:0;transform:translateX(-50%) translateY(8px)}}
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand">
+        <div class="emblem">🚀</div>
+        <div>
+          <h1>GPT‑5 Детский Квест</h1>
+          <div class="crumbs">Загадка → Считалка → Сказка → Наклейки</div>
+        </div>
+      </div>
+      <div class="pillbar">
+        <div class="pill">✨ Премиум-оформление</div>
+        <div class="pill">🧠 GPT режим: <span id="pill-gpt">выкл</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="progress">
+        <div class="bar"><i id="progress"></i></div>
+        <div class="pct" id="pct">0%</div>
+      </div>
+
+      <div id="view-setup" class="section">
+        <h2>⚙️ Настройки</h2>
+        <div class="row">
+          <div>
+            <label>Имя ребёнка</label>
+            <input id="name" type="text" value="Алиса" />
+            <label>Возраст</label>
+            <input id="age" type="number" min="4" max="10" value="6" />
+            <label>Тема приключения</label>
+            <div class="choices" id="themes">
+              <button class="choice active" data-theme>Космос</button>
+              <button class="choice" data-theme>Джунгли</button>
+              <button class="choice" data-theme>Океан</button>
+              <button class="choice" data-theme>Динозавры</button>
+              <button class="choice" data-theme>Сказочный город</button>
+              <button class="choice" data-theme>Загадочный лес</button>
+            </div>
+            <label>Маскот‑помощник</label>
+            <div class="choices" id="mascots">
+              <button class="choice active" data-mascot>🦊 Лисёнок</button>
+              <button class="choice" data-mascot>🤖 Роботёнок</button>
+              <button class="choice" data-mascot>🐼 Пандёнок</button>
+              <button class="choice" data-mascot>🦉 Совёнок</button>
+            </div>
+          </div>
+          <div>
+            <div class="switch"><span>🔊 Озвучка</span><input id="tts" type="checkbox" checked /></div>
+            <div class="switch" style="margin-top:10px"><span>🎙️ Распознавание речи</span><input id="stt" type="checkbox" checked /></div>
+            <div class="switch" style="margin-top:10px"><span>🧠 Режим GPT</span><input id="gpt" type="checkbox" /></div>
+            <div id="gpt-box" style="display:none;margin-top:10px;padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(12,18,40,.55)">
+              <label>OpenAI API Key</label>
+              <input id="key" type="password" placeholder="sk-..." />
+              <label>Модель</label>
+              <input id="model" type="text" value="gpt-5.1" />
+              <p class="muted">Ключ используется только в браузере. Серверов нет.</p>
+            </div>
+            <div class="muted" style="display:flex;align-items:center;gap:8px;margin-top:10px">🛡️ Все данные — только на вашем устройстве.</div>
+            <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+              <button id="start" class="btn primary"><span>🎮 Поехали!</span></button>
+              <button id="open-album-top" class="btn outline"><span>🏆 Альбом</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-riddle" class="section" style="display:none">
+        <h2>✨ Загадка</h2>
+        <p id="riddle-text">Генерирую загадку…</p>
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          <input id="answer" type="text" placeholder="Твой ответ" />
+          <button id="answer-btn" class="btn primary">Ответить</button>
+          <button id="say" class="btn outline">🎙️ Сказать</button>
+          <button id="riddle-tts" class="btn outline">🔊</button>
+        </div>
+        <p class="hint" id="tries">Подсказки: попыток 0 / 3</p>
+      </div>
+
+      <div id="view-count" class="section" style="display:none">
+        <h2>🌟 Считалка</h2>
+        <div id="icons" class="icons" aria-live="polite"></div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">
+          <input id="count-input" type="number" placeholder="Сколько штук?" style="max-width:160px" />
+          <button id="count-btn" class="btn primary">Готово</button>
+        </div>
+        <p class="hint">Подсказка: можно посчитать вслух и ввести число</p>
+      </div>
+
+      <div id="view-story" class="section" style="display:none">
+        <h2>🏆 Сказочный финал</h2>
+        <p id="story" class="center" style="white-space:pre-wrap"></p>
+        <div class="center" style="margin-top:12px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap">
+          <button id="open-album" class="btn primary">Открыть альбом</button>
+          <button id="again" class="btn outline">Сыграть ещё раз</button>
+        </div>
+      </div>
+
+      <div id="view-album" class="section" style="display:none">
+        <h2>🏆 Мой альбом наклеек</h2>
+        <div id="album-empty" class="muted">Пока пусто — пройдите квест, чтобы получить первую наклейку!</div>
+        <div id="album" class="album-grid" style="margin-top:10px"></div>
+        <div class="center" style="margin-top:12px">
+          <button id="back" class="btn outline">Назад к началу</button>
+        </div>
+      </div>
+
+      <p class="foot">Работает офлайн. Включите «Режим GPT» и вставьте API‑ключ, чтобы генерировать контент настоящей моделью (по умолчанию — gpt‑5.1).</p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+
+<script>
+(function(){
+  // ---------- State ----------
+  let childName = "Алиса";
+  let age = 6;
+  let theme = "Космос";
+  let mascot = "🦊 Лисёнок";
+  let progress = 0;
+  let useVoice = true;
+  let useSTT = true;
+  let useOpenAI = false;
+  let openaiKey = "";
+  let modelName = "gpt-5.1";
+
+  let riddle = "";
+  let riddleAnswer = "";
+  let tries = 0;
+
+  let countIcon = "⭐";
+  let countTotal = 5;
+
+  let album = [];
+  try{ const saved = localStorage.getItem("kids_ai_album"); if(saved) album = JSON.parse(saved)||[]; }catch{}
+
+  // ---------- Elements ----------
+  const el = (id)=>document.getElementById(id);
+  const progressEl = el("progress"), pctEl = el("pct"), bar = document.querySelector(".bar");
+
+  const vSetup = el("view-setup");
+  const vRiddle = el("view-riddle");
+  const vCount = el("view-count");
+  const vStory = el("view-story");
+  const vAlbum = el("view-album");
+
+  const inputName = el("name");
+  const inputAge = el("age");
+  const ttsBox = el("tts"), sttBox = el("stt"), gptBox = el("gpt");
+  const gptWrap = el("gpt-box");
+  const inputKey = el("key"), inputModel = el("model");
+  const startBtn = el("start");
+  const openAlbumTop = el("open-album-top");
+
+  const riddleText = el("riddle-text");
+  const answerInput = el("answer");
+  const answerBtn = el("answer-btn");
+  const sayBtn = el("say");
+  const riddleTTS = el("riddle-tts");
+  const triesEl = el("tries");
+
+  const iconsEl = el("icons");
+  const countInput = el("count-input");
+  const countBtn = el("count-btn");
+
+  const storyP = el("story");
+  const openAlbumBtn = el("open-album");
+  const againBtn = el("again");
+
+  const albumGrid = el("album");
+  const albumEmpty = el("album-empty");
+  const backBtn = el("back");
+
+  const pillGPT = el("pill-gpt");
+  const toast = el("toast");
+
+  // ---------- Helpers ----------
+  function setProgress(p){
+    progress = p;
+    progressEl.style.width = p + "%";
+    pctEl.textContent = p + "%";
+    bar.style.setProperty("--x", p + "%");
+  }
+  function show(id){ [vSetup,vRiddle,vCount,vStory,vAlbum].forEach(v=>v.style.display="none"); id.style.display = "block"; }
+  function toastMsg(msg){ toast.textContent = msg; toast.classList.remove("show"); void toast.offsetWidth; toast.classList.add("show"); }
+  function normalize(s){ return (s||"").toLowerCase().replace(/ё/g,"е").replace(/[^a-zа-я0-9]+/gi,"").trim(); }
+  function levenshtein(a,b){
+    const m=a.length,n=b.length, dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
+    for(let i=0;i<=m;i++) dp[i][0]=i; for(let j=0;j<=n;j++) dp[0][j]=j;
+    for(let i=1;i<=m;i++) for(let j=1;j<=n;j++){
+      const cost=a[i-1]===b[j-1]?0:1;
+      dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+cost);
+    } return dp[m][n];
+  }
+  function similar(a,b){ const A=normalize(a), B=normalize(b); if(!A||!B) return 0; const d=levenshtein(A,B); return 1 - d/Math.max(A.length,B.length); }
+  function speak(text){
+    if(!useVoice || !("speechSynthesis" in window)) return;
+    try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text);
+      u.lang="ru-RU"; u.rate=Math.min(1.2, Math.max(0.8, 1.0 - (age - 6) * 0.03));
+      window.speechSynthesis.speak(u);
+    }catch{}
+  }
+
+  // STT
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  let recog = null;
+  function ensureRecog(){ if(!useSTT || !SR) return null; if(recog) return recog; recog = new SR(); recog.lang = "ru-RU"; recog.interimResults=false; recog.maxAlternatives=1; return recog; }
+  function listenOnce(onResult){ const r = ensureRecog(); if(!r) return; try { r.onresult = (e)=>{ const text = e.results?.[0]?.[0]?.transcript || ""; onResult(text); }; r.start(); } catch{} }
+
+  function saveAlbum(sticker){ album = [...album, sticker].slice(-24); try{ localStorage.setItem("kids_ai_album", JSON.stringify(album)); }catch{} }
+  function renderAlbum(){
+    albumGrid.innerHTML = "";
+    if(!album.length){ albumEmpty.style.display="block"; return; }
+    albumEmpty.style.display="none";
+    album.forEach((s)=>{
+      const d=document.createElement("div"); d.className="sticker";
+      const em=document.createElement("div"); em.style.fontSize="26px"; em.textContent = (s.split(" ")[0]||"⭐");
+      const t=document.createElement("div"); t.className="st-title"; t.textContent = s;
+      d.appendChild(em); d.appendChild(t); albumGrid.appendChild(d);
+    });
+  }
+
+  const THEMES = {
+    "Космос": {
+      icons:["⭐","🌟","🪐","☄️"],
+      riddles:[
+        {q:"Я ночью в небе свет горю, морякам путь укажу. Я не лампа, не фонарь. Кто я?", a:"звезда"},
+        {q:"Я не птица, а крылья есть, в космос я люблю взлететь. Кто я?", a:"ракета"},
+        {q:"Далёкая река из звёзд — как её зовут?", a:"млечный путь"}
+      ]
+    },
+    "Джунгли": {
+      icons:["🍃","🐒","🦜","🍌"],
+      riddles:[
+        {q:"Ветвям друг и акробат, по лианам ловко скачет. Кто?", a:"обезьяна"},
+        {q:"Пёстрое перо, слова повторю легко. Кто я?", a:"попугай"},
+        {q:"Полосат я, не матрас, громко рычу я как...", a:"тигр"}
+      ]
+    },
+    "Океан": {
+      icons:["🐚","🐬","🐟","🌊"],
+      riddles:[
+        {q:"Дом для рака уношу, на спине своей ношу. Кто я?", a:"ракушка"},
+        {q:"Я не птица — в небе нет, я ныряю в синий свет. Кто?", a:"дельфин"},
+        {q:"Море — дом, хвост — парус. Кто так плавает?", a:"рыба"}
+      ]
+    },
+    "Динозавры": {
+      icons:["🦖","🦕","🌋","🌿"],
+      riddles:[
+        {q:"Громкий голос как мотор, древний лес я грозно спорол. Кто?", a:"тираннозавр"},
+        {q:"Шея длинная — лист вкусней. Кто?", a:"брахиозавр"},
+        {q:"Я летаю, не птица. Я — древняя...", a:"птеродактиль"}
+      ]
+    },
+    "Сказочный город": {
+      icons:["🏰","🧚‍♀️","🧙‍♂️","✨"],
+      riddles:[
+        {q:"Где мосты из хрусталя и смеётся детвора?", a:"сказочный город"},
+        {q:"Колпак, метла и кот учёный — кто тут главный?", a:"волшебник"},
+        {q:"На ладони тёплый свет — кто мерцает много лет?", a:"светлячок"}
+      ]
+    },
+    "Загадочный лес": {
+      icons:["🌲","🍄","🦌","🧚‍♂️"],
+      riddles:[
+        {q:"Я в тени, где шёпот птиц, проложу зверям черниц. Кто я?", a:"тропа"},
+        {q:"С шляпкой, но не человек, иногда красный – береги свой век. Кто я?", a:"гриб"},
+        {q:"К ветвям рога поднял небесным лотосом. Кто?", a:"олень"}
+      ]
+    }
+  };
+
+  function generateLocalQuest(){
+    const pack = THEMES[theme] || THEMES["Космос"];
+    const r = pack.riddles[Math.floor(Math.random()*pack.riddles.length)];
+    const icon = pack.icons[Math.floor(Math.random()*pack.icons.length)];
+    const total = 3 + Math.floor(Math.random()*7); // 3..9
+    riddle = r.q; riddleAnswer = r.a; countIcon = icon; countTotal = total;
+  }
+
+  async function generateWithOpenAI(){
+    const sys = "Ты — детский игровой мастер. Создай короткую загадку (1-2 строки) и ответ одним словом, затем придумай мини-считалку: сколько объектов надо посчитать (3..9) и какой эмодзи использовать (один символ). Верни JSON {riddle, answer, countTotal, icon}.";
+    const user = `Имя: ${childName}, возраст: ${age}. Тема: ${theme}. Маскот: ${mascot}.`;
+    try{
+      const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+openaiKey },
+        body: JSON.stringify({
+          model: modelName,
+          messages:[{role:"system",content:sys},{role:"user",content:user}],
+          temperature:0.8,
+          response_format:{type:"json_object"}
+        })
+      });
+      const data = await resp.json();
+      const content = data?.choices?.[0]?.message?.content || "";
+      const parsed = JSON.parse(content);
+      riddle = parsed.riddle || riddle;
+      riddleAnswer = (parsed.answer||"").toString();
+      countTotal = Number(parsed.countTotal)||countTotal;
+      countIcon = parsed.icon || countIcon;
+    }catch(e){
+      generateLocalQuest();
+    }
+  }
+
+  function buildBaseStory(){
+    return `${mascot} и ${childName} шагали по чудесному миру «${theme}». Они разгадали тайну — это была «${riddleAnswer}» — и весело сосчитали ${countTotal} ${countIcon}. В награду волшебный город устроил праздник, подарив ${childName} блестящую наклейку, которая хранит тепло дружбы и радость приключений.`;
+  }
+  async function buildStory(){
+    const base = buildBaseStory();
+    if(useOpenAI && openaiKey.trim()){
+      try{
+        const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+openaiKey },
+          body: JSON.stringify({
+            model: modelName,
+            messages:[
+              {role:"system",content:"Составь 2–3 предложения тёплой сказки для ребёнка 5–7 лет."},
+              {role:"user",content:`Имя: ${childName}. Тема: ${theme}. Маскот: ${mascot}. Ответ: ${riddleAnswer}. Иконки: ${countIcon} × ${countTotal}.`}
+            ],
+            temperature:0.8
+          })
+        });
+        const data = await resp.json();
+        return data?.choices?.[0]?.message?.content || base;
+      }catch(e){ return base; }
+    }
+    return base;
+  }
+
+  function startGame(){
+    childName = inputName.value.trim() || "Гость";
+    age = Math.max(4, Math.min(10, Number(inputAge.value||6)));
+    useVoice = !!ttsBox.checked;
+    useSTT = !!sttBox.checked;
+    useOpenAI = !!gptBox.checked;
+    openaiKey = inputKey.value || "";
+    modelName = inputModel.value || "gpt-5.1";
+    pillGPT.textContent = useOpenAI ? "вкл" : "выкл";
+
+    tries = 0;
+    setProgress(12);
+    show(vRiddle);
+    speak(`Привет, ${childName}! Сначала загадка.`);
+
+    (useOpenAI && openaiKey.trim() ? generateWithOpenAI() : (generateLocalQuest(), Promise.resolve()))
+      .then(()=>{
+        riddleText.textContent = riddle;
+        answerInput.value = "";
+        triesEl.textContent = "Подсказки: попыток 0 / 3";
+      });
+  }
+
+  function checkRiddle(){
+    const userAnswer = answerInput.value;
+    const ok = similar(userAnswer, riddleAnswer) >= 0.7 || normalize(userAnswer).includes(normalize(riddleAnswer));
+    tries++;
+    if(ok){
+      setProgress(48);
+      speak("Ура! Правильно! Переходим к считалке.");
+      setTimeout(()=>toCounting(), 260);
+      saveAlbum("🏅 За загадку");
+    } else if(tries >= 3){
+      speak(`Ничего, бывает! Ответ: ${riddleAnswer}. Пойдём дальше!`);
+      setProgress(48);
+      setTimeout(()=>toCounting(), 260);
+    } else {
+      speak("Почти! Попробуй ещё раз.");
+      triesEl.textContent = `Подсказки: попыток ${tries} / 3`;
+      toastMsg("Подумай ещё 🙂");
+    }
+  }
+
+  function toCounting(){
+    show(vCount);
+    iconsEl.innerHTML = "";
+    for(let i=0;i<countTotal;i++){
+      const s=document.createElement("span"); s.textContent = countIcon; s.style.setProperty("--i", i);
+      iconsEl.appendChild(s);
+    }
+  }
+
+  function checkCount(){
+    const n = Number(countInput.value);
+    if(n === countTotal){
+      speak("Отлично посчитал! Финал — сказочка.");
+      setProgress(82);
+      saveAlbum("🌟 За считалку");
+      setTimeout(async ()=>{
+        const t = await buildStory();
+        storyP.textContent = t;
+        show(vStory);
+        setProgress(95);
+        speak("Слушай сказочку! " + t);
+      }, 280);
+    } else {
+      speak("Хм, не совсем. Проверь ещё раз!");
+      toastMsg("Ещё разок!");
+    }
+  }
+
+  function openAlbum(){
+    setProgress(100);
+    renderAlbum();
+    show(vAlbum);
+    saveAlbum("🏆 Сказочник");
+    renderAlbum();
+  }
+
+  function backToStart(){ show(vSetup); setProgress(0); }
+
+  function markActive(groupSel, btn){
+    document.querySelectorAll(groupSel+" .choice").forEach(x=>x.classList.remove("active"));
+    btn.classList.add("active");
+  }
+  document.querySelectorAll("[data-theme]").forEach((b)=>{
+    b.addEventListener("click", ()=>{ markActive("#themes", b); theme = b.textContent.trim(); });
+  });
+  document.querySelectorAll("[data-mascot]").forEach((b)=>{
+    b.addEventListener("click", ()=>{ markActive("#mascots", b); mascot = b.textContent.trim(); });
+  });
+  gptBox.addEventListener("change", ()=>{ gptWrap.style.display = gptBox.checked ? "block" : "none"; });
+  startBtn.addEventListener("click", startGame);
+  openAlbumTop.addEventListener("click", ()=>{ show(vAlbum); renderAlbum(); });
+
+  answerBtn.addEventListener("click", checkRiddle);
+  answerInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter") checkRiddle(); });
+  riddleTTS.addEventListener("click", ()=> speak(riddle));
+  sayBtn.addEventListener("click", ()=>{
+    if(!(useSTT && (window.SpeechRecognition||window.webkitSpeechRecognition))) { toastMsg("STT недоступна в этом браузере"); return; }
+    listenOnce(txt=>{ answerInput.value = txt; });
+  });
+
+  countBtn.addEventListener("click", checkCount);
+  countInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter") checkCount(); });
+
+  openAlbumBtn?.addEventListener("click", openAlbum);
+  againBtn?.addEventListener("click", ()=>{ show(vSetup); setProgress(0); });
+  backBtn?.addEventListener("click", backToStart);
+
+  renderAlbum();
+})();</script>
+</body>
+</html>
