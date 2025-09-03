@@ -1,4 +1,4 @@
-# gpt-5. AI Tools & Offline Demos
+# GPT-5. AI Tools & Offline Demos
 
 Набор автономных HTML-демо (без внешних библиотек) и промптов GPT-5.
 
